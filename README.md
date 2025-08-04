@@ -16,20 +16,21 @@ DOM 데이터 활용 테스트 자동화
 
 
 ## 📁 프로젝트 구조
-.
+```
 ├── embed_json.py # 임베딩 및 Chroma DB 저장
 ├── enhance_unnamed_desc.py # 정제되지 않은 설명 자동 보완
 ├── extract_elements.py # HTML → DOM 요소 추출
 ├── extract_vpes_dom.py # VPES HTML 크롤링 (초기 데이터 수집)
 ├── requirements.txt # 필요한 Python 패키지 명세
 ├── README.md # 프로젝트 설명 파일
-
+```
 
 + 아래 폴더들은 **스크립트 실행 시 자동 생성됩니다** (Git에 포함되지 않음)
+```
 ├── html_pages/ # 수집된 HTML 원본
 ├── extracted_json/ # DOM 요소가 JSON 형태로 저장됨
 ├── chroma_db/ # Chroma DB에 저장된 임베딩 벡터
-
+```
 
 ## 실행 순서
 
