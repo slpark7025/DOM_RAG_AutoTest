@@ -44,7 +44,7 @@ DOM 데이터 활용 테스트 자동화
 2. python extract_elements.py 수행 -> xtracted_json/ 폴더 생성
 
 
-2-1. python enhance_unnamed_desc.py 수행 -> xtracted_json/ 폴더 내 desc 파라미터 내 unnamed로 기입된 부분 보완
+3. python enhance_unnamed_desc.py 수행 -> xtracted_json/ 폴더 내 desc 파라미터 내 unnamed로 기입된 부분 보완
 
 
-3. python embed_json.py 수행 -> 임베딩 + DB 저장 -> chroma_db/ 폴더 생성
+4. python embed_json.py 수행 -> 임베딩 + DB 저장 -> chroma_db/ 폴더 생성
