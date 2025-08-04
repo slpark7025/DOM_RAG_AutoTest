@@ -1,0 +1,1892 @@
+[
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[7]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=8)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "Log Download",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-link",
+      "about-vpes-modal-content-info-download"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[7]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[4]/button[1]",
+    "desc": "BUTTON - Log Download",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=8)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "닫기",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[3]/button[1]",
+    "desc": "BUTTON - 닫기",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "×",
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": "Close",
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[9]/div[1]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - ×",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "취소",
+    "id": "deleteN",
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/button[1]",
+    "desc": "BUTTON - 취소",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": "deleteY",
+    "class": [
+      "btn",
+      "btn-danger"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[2]/div[2]/button[1]",
+    "desc": "BUTTON - deleteY",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[11]/div[1]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=9)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "확인",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[11]/div[1]/div[1]/div[1]/div[3]/button[1]",
+    "desc": "BUTTON - 확인",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "×",
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": "Close",
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[12]/div[1]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - ×",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "SCM 설정",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/div[2]/button[1]",
+    "desc": "BUTTON - SCM 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "LLM 설정",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/div[2]/button[2]",
+    "desc": "BUTTON - LLM 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[3]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=10)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "닫기",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[3]/div[1]/div[1]/div[3]/button[1]",
+    "desc": "BUTTON - 닫기",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "저장",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[3]/div[1]/div[1]/div[3]/button[2]",
+    "desc": "BUTTON - 저장",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=10)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "닫기",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[4]/button[1]",
+    "desc": "BUTTON - 닫기",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "저장",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[4]/button[2]",
+    "desc": "BUTTON - 저장",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=10)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "닫기",
+    "id": null,
+    "class": [
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[3]/div[1]/button[1]",
+    "desc": "BUTTON - 닫기",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "시작",
+    "id": "btnBuildStart",
+    "class": [
+      "btn",
+      "btn-light",
+      "pbe-build-btn"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[6]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/span[1]/button[1]",
+    "desc": "BUTTON - 시작",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "중지",
+    "id": "btnBuildWait",
+    "class": [
+      "btn",
+      "btn-light",
+      "pbe-build-btn"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[6]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/span[2]/button[1]",
+    "desc": "BUTTON - 중지",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "button",
+    "text": "취소",
+    "id": "btnBuildCancel",
+    "class": [
+      "btn",
+      "btn-light",
+      "pbe-build-btn"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[6]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/span[3]/button[1]",
+    "desc": "BUTTON - 취소",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarLogoVue",
+    "class": [
+      "navbar-brand",
+      "pl-4",
+      "mr-4"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/a[1]",
+    "desc": "A - TopNavBarLogoVue",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "프로젝트",
+    "id": "TopNavBarProjectList",
+    "class": [
+      "nav-link",
+      "dropdown-toggle",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 프로젝트",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "SAMPLE_PROJECT",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[1]",
+    "desc": "A - SAMPLE_PROJECT",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "test0721",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[2]",
+    "desc": "A - test0721",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "test_jemi",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[3]",
+    "desc": "A - test_jemi",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "test0717",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[4]",
+    "desc": "A - test0717",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "test_p",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[5]",
+    "desc": "A - test_p",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "TEST07171",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[6]",
+    "desc": "A - TEST07171",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "test07172",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[7]",
+    "desc": "A - test07172",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "slpark_test",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[8]",
+    "desc": "A - slpark_test",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "sn2",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[9]",
+    "desc": "A - sn2",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "SN_0718",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[10]",
+    "desc": "A - SN_0718",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "과제 정보 조회",
+    "id": "TopNavBarProjectHistory",
+    "class": [
+      "nav-link",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 과제 정보 조회",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "Knowledge Hub",
+    "id": "TopNavBarKnowledgeHub",
+    "class": [
+      "nav-link",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - Knowledge Hub",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarCommonNotification",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[1]/a[1]",
+    "desc": "A - TopNavBarCommonNotification",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarGlobalSetting",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[2]/a[1]",
+    "desc": "A - TopNavBarGlobalSetting",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarAboutRtms",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/a[1]",
+    "desc": "A - TopNavBarAboutRtms",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "도움말",
+    "id": "TopNavBarAboutRtmsHelpBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[1]",
+    "desc": "A - 도움말",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "About VPES",
+    "id": "TopNavBarAboutRtmsVpesVerBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[2]",
+    "desc": "A - About VPES",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "Copyright Notice",
+    "id": "TopNavBarAboutRtmsCopyrightBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[3]",
+    "desc": "A - Copyright Notice",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "실험실beta",
+    "id": "TopNavBarAboutRtmsLabBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[4]",
+    "desc": "A - 실험실beta",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarBuildJobNotification",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[4]/a[1]",
+    "desc": "A - TopNavBarBuildJobNotification",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarGroupDashboard",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[5]/a[1]",
+    "desc": "A - TopNavBarGroupDashboard",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "그룹",
+    "id": "TopNavBarGroupDashboardGoToGroupBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[5]/div[1]/a[1]",
+    "desc": "A - 그룹",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "프로젝트",
+    "id": "TopNavBarGroupDashboardGoToNormalBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[5]/div[1]/a[2]",
+    "desc": "A - 프로젝트",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "Admin",
+    "id": "TopNavBarUserInfoDropDownBtn",
+    "class": [
+      "nav-link",
+      "dropdown-toggle",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[7]/a[1]",
+    "desc": "A - Admin",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "사용자 정보 관리",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[7]/div[1]/a[1]",
+    "desc": "A - 사용자 정보 관리",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "로그아웃",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[7]/div[1]/a[2]",
+    "desc": "A - 로그아웃",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "http://www.apache.org/licenses/",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[1]",
+    "desc": "A - http://www.apache.org/licenses/",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "https://www.hancom.com/etc/hwpDownload.do",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[2]",
+    "desc": "A - https://www.hancom.com/etc/hwpDownload.do",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "https://github.com/neolord0/hwplib",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[3]",
+    "desc": "A - https://github.com/neolord0/hwplib",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "GNU Affero General Public License v3.0",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[4]",
+    "desc": "A - GNU Affero General Public License v3.0",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "<http://www.gnu.org/licenses/>.",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[5]",
+    "desc": "A - <http://www.gnu.org/licenses/>.",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/div[1]/div[2]/a[1]",
+    "desc": "A - unnamed (xpath-depth=10)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "프로세스 개요",
+    "id": "overView-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 프로세스 개요",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "기술 문서",
+    "id": "technicalDocument-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 기술 문서",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "기술 문서 검증",
+    "id": "inputDocument",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[2]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 기술 문서 검증",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "기술 문서 검증 결과",
+    "id": "inspectionDocument",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[2]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 기술 문서 검증 결과",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "코드 관리",
+    "id": "projectSourceCode-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - 코드 관리",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "파일 정보",
+    "id": "fileinfo",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[3]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 파일 정보",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "함수  정보",
+    "id": "groupinfo",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[3]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 함수  정보",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "그룹 정보",
+    "id": "groupinfo",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[3]/div[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - 그룹 정보",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "신뢰성 시험",
+    "id": "projectDetail-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/a[1]",
+    "desc": "A - 신뢰성 시험",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "결과 요약",
+    "id": "progress",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 결과 요약",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "정적 시험",
+    "id": "static",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 정적 시험",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "동적 시험",
+    "id": "dynamic",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/div[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - 동적 시험",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "소스코드 메트릭",
+    "id": "metric",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/div[1]/ul[1]/li[4]/a[1]",
+    "desc": "A - 소스코드 메트릭",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "예외처리 결과",
+    "id": "suppression",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/div[1]/ul[1]/li[5]/a[1]",
+    "desc": "A - 예외처리 결과",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "통합 모의시험",
+    "id": "groupinfo",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[4]/div[1]/ul[1]/li[6]/a[1]",
+    "desc": "A - 통합 모의시험",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "시험 수행 관리",
+    "id": "testExecution-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail",
+      "isSelect",
+      "non_select"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[5]/a[1]",
+    "desc": "A - 시험 수행 관리",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "빌드 수행",
+    "id": "buildExecution",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1",
+      "isSelect"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[5]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 빌드 수행",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "콘솔 출력",
+    "id": "detailConsole",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[5]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 콘솔 출력",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "산출물",
+    "id": "report-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[6]/a[1]",
+    "desc": "A - 산출물",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "설정",
+    "id": "setting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[7]/a[1]",
+    "desc": "A - 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "빌드 설정",
+    "id": "buildSetting",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[7]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 빌드 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "프로젝트 설정",
+    "id": "projectSetting",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[7]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 프로젝트 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "진행률 설정",
+    "id": "projectPorgressHistoryInfo",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[7]/div[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - 진행률 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "규칙 설정",
+    "id": "projectRuleSetting",
+    "class": [
+      "subTab_contents",
+      "nav-link",
+      "py-1"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[1]/ul[1]/li[7]/div[1]/ul[1]/li[4]/a[1]",
+    "desc": "A - 규칙 설정",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "LLM 관리",
+    "id": "tabFunc",
+    "class": [
+      "nav-ai-link",
+      "ai-padding-zero-lr",
+      "active"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[2]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - LLM 관리",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "부가 정보",
+    "id": "tabValid",
+    "class": [
+      "nav-ai-link",
+      "ai-padding-zero-lr"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[2]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 부가 정보",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "<",
+    "id": "projectChangeHistoryTable_previous",
+    "class": [
+      "paginate_button",
+      "previous",
+      "disabled"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/a[1]",
+    "desc": "A - <",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "1",
+    "id": null,
+    "class": [
+      "paginate_button",
+      "current"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/span[1]/a[1]",
+    "desc": "A - 1",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": "2",
+    "id": null,
+    "class": [
+      "paginate_button"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/span[1]/a[2]",
+    "desc": "A - 2",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "a",
+    "text": ">",
+    "id": "projectChangeHistoryTable_next",
+    "class": [
+      "paginate_button",
+      "next"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/a[2]",
+    "desc": "A - >",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarPrjSearch",
+    "class": [
+      "form-control",
+      "projectListDropdownSearch"
+    ],
+    "name": null,
+    "placeholder": "프로젝트 검색",
+    "aria-label": null,
+    "type_attr": "search",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[1]/input[1]",
+    "desc": "INPUT - TopNavBarPrjSearch",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqUiModeKey",
+    "class": null,
+    "name": "reqUiModeKey",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[1]",
+    "desc": "INPUT - reqUiModeKey",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqReportModeKey",
+    "class": null,
+    "name": "reqReportModeKey",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[2]",
+    "desc": "INPUT - reqReportModeKey",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqProjectId",
+    "class": null,
+    "name": "reqProjectId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[3]",
+    "desc": "INPUT - reqProjectId",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqRevisionNum",
+    "class": null,
+    "name": "reqRevisionNum",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[4]",
+    "desc": "INPUT - reqRevisionNum",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqAccessUserId",
+    "class": null,
+    "name": "reqAccessUserId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[5]",
+    "desc": "INPUT - reqAccessUserId",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqModifyUserId",
+    "class": null,
+    "name": "reqModifyUserId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[6]",
+    "desc": "INPUT - reqModifyUserId",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqToolType",
+    "class": null,
+    "name": "reqToolType",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[7]",
+    "desc": "INPUT - reqToolType",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataCurrentPageUrl",
+    "class": null,
+    "name": "currentPageUrl",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[8]",
+    "desc": "INPUT - currentPageUrl",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataCurrentTab",
+    "class": null,
+    "name": "currentTab",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[9]",
+    "desc": "INPUT - currentTab",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataContextRoot",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[10]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarReqRemoteAddr",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[11]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "KnowledgeHubBoardCategory",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[12]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "KnowledgeHubBoardType",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[13]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataViewType",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[14]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataReadId",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[15]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataRuleSet",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[16]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataRule",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[17]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "projectId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[1]",
+    "desc": "INPUT - projectId",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "revisionNum",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[2]",
+    "desc": "INPUT - revisionNum",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "file",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[3]",
+    "desc": "INPUT - file",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "line",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[4]",
+    "desc": "INPUT - line",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "aiUse",
+    "class": null,
+    "name": "radioUse",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "radio",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/input[1]",
+    "desc": "INPUT - radioUse",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "aiUnUse",
+    "class": null,
+    "name": "radioUse",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "radio",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/input[1]",
+    "desc": "INPUT - radioUse",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "aiwritingType1",
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "radio",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[2]/div[1]/input[1]",
+    "desc": "INPUT - aiwritingType1",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "aiwritingType2",
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "radio",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[2]/div[2]/input[1]",
+    "desc": "INPUT - aiwritingType2",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [],
+    "name": null,
+    "placeholder": "검색어를 입력하세요.",
+    "aria-label": null,
+    "type_attr": "search",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[2]/label[1]/input[1]",
+    "desc": "INPUT - unnamed (type=search; xpath-depth=14)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "select",
+    "text": "5103050100",
+    "id": null,
+    "class": [],
+    "name": "projectChangeHistoryTable_length",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/label[1]/select[1]",
+    "desc": "SELECT - 5103050100",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "textarea",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control"
+    ],
+    "name": null,
+    "placeholder": "API KEY",
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[3]/div[2]/textarea[1]",
+    "desc": "TEXTAREA - unnamed (class=form-control; xpath-depth=14)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "textarea",
+    "text": null,
+    "id": "",
+    "class": [
+      "form-control"
+    ],
+    "name": null,
+    "placeholder": "http://127.0.0.1",
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[4]/div[2]/textarea[1]",
+    "desc": "TEXTAREA - unnamed (class=form-control; xpath-depth=14)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "textarea",
+    "text": null,
+    "id": "",
+    "class": [
+      "form-control"
+    ],
+    "name": null,
+    "placeholder": "http://127.0.0.1",
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[5]/div[2]/textarea[1]",
+    "desc": "TEXTAREA - unnamed (class=form-control; xpath-depth=14)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "textarea",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[7]/div[1]/textarea[1]",
+    "desc": "TEXTAREA - unnamed (xpath-depth=15)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "label",
+    "text": "사용",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/label[1]",
+    "desc": "LABEL - 사용",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "label",
+    "text": "미사용",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[2]/label[1]",
+    "desc": "LABEL - 미사용",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "label",
+    "text": "응답 유형1",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[2]/div[1]/label[1]",
+    "desc": "LABEL - 응답 유형1",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "label",
+    "text": "응답 유형2",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[4]/div[1]/div[1]/div[3]/div[1]/div[2]/div[1]/div[2]/div[2]/label[1]",
+    "desc": "LABEL - 응답 유형2",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "label",
+    "text": "5103050100",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/label[1]",
+    "desc": "LABEL - 5103050100",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  },
+  {
+    "tag": "label",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[5]/div[1]/div[1]/div[2]/div[1]/div[1]/div[2]/label[1]",
+    "desc": "LABEL - unnamed (xpath-depth=13)",
+    "url": "/vpes/ProjectBuildExecution/test0717"
+  }
+]

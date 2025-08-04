@@ -1,0 +1,1357 @@
+[
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[7]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=8)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "Log Download",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-link",
+      "about-vpes-modal-content-info-download"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[7]/div[1]/div[1]/div[2]/div[1]/div[2]/div[1]/div[4]/button[1]",
+    "desc": "BUTTON - Log Download",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=8)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "닫기",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[3]/button[1]",
+    "desc": "BUTTON - 닫기",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "×",
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": "Close",
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[9]/div[1]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - ×",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "취소",
+    "id": "deleteN",
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/button[1]",
+    "desc": "BUTTON - 취소",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": "deleteY",
+    "class": [
+      "btn",
+      "btn-danger"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[10]/div[1]/div[1]/div[1]/div[1]/div[2]/div[2]/button[1]",
+    "desc": "BUTTON - deleteY",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[11]/div[1]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; type=button; xpath-depth=9)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "확인",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[11]/div[1]/div[1]/div[1]/div[3]/button[1]",
+    "desc": "BUTTON - 확인",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "×",
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": "Close",
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[12]/div[1]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - ×",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": null,
+    "id": null,
+    "class": [
+      "close"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": "Close",
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - unnamed (class=close; aria-label=Close; type=button; xpath-depth=8)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "사용자 등록 신청",
+    "id": "userManageRegister-saveBtn",
+    "class": [
+      "btn",
+      "btn-primary",
+      "btn-optional-inline"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[4]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - 사용자 등록 신청",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "닫기",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-outline-primary",
+      "btn-optional",
+      "mr-2"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/button[1]",
+    "desc": "BUTTON - 닫기",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "button",
+    "text": "저장",
+    "id": null,
+    "class": [
+      "btn",
+      "btn-primary",
+      "btn-required"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "button",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/button[2]",
+    "desc": "BUTTON - 저장",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarLogoVue",
+    "class": [
+      "navbar-brand",
+      "pl-4",
+      "mr-4"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/a[1]",
+    "desc": "A - TopNavBarLogoVue",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "프로젝트",
+    "id": "TopNavBarProjectList",
+    "class": [
+      "nav-link",
+      "dropdown-toggle",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 프로젝트",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "SAMPLE_PROJECT",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[1]",
+    "desc": "A - SAMPLE_PROJECT",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "test0721",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[2]",
+    "desc": "A - test0721",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "test_jemi",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[3]",
+    "desc": "A - test_jemi",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "test0717",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[4]",
+    "desc": "A - test0717",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "test_p",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[5]",
+    "desc": "A - test_p",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "TEST07171",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[6]",
+    "desc": "A - TEST07171",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "test07172",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[7]",
+    "desc": "A - test07172",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "slpark_test",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[8]",
+    "desc": "A - slpark_test",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "sn2",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[9]",
+    "desc": "A - sn2",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "SN_0718",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[3]/a[10]",
+    "desc": "A - SN_0718",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "과제 정보 조회",
+    "id": "TopNavBarProjectHistory",
+    "class": [
+      "nav-link",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - 과제 정보 조회",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "Knowledge Hub",
+    "id": "TopNavBarKnowledgeHub",
+    "class": [
+      "nav-link",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - Knowledge Hub",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarCommonNotification",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[1]/a[1]",
+    "desc": "A - TopNavBarCommonNotification",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarGlobalSetting",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[2]/a[1]",
+    "desc": "A - TopNavBarGlobalSetting",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarAboutRtms",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/a[1]",
+    "desc": "A - TopNavBarAboutRtms",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "도움말",
+    "id": "TopNavBarAboutRtmsHelpBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[1]",
+    "desc": "A - 도움말",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "About VPES",
+    "id": "TopNavBarAboutRtmsVpesVerBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[2]",
+    "desc": "A - About VPES",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "Copyright Notice",
+    "id": "TopNavBarAboutRtmsCopyrightBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[3]",
+    "desc": "A - Copyright Notice",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "실험실beta",
+    "id": "TopNavBarAboutRtmsLabBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[3]/div[1]/a[4]",
+    "desc": "A - 실험실beta",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarBuildJobNotification",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[4]/a[1]",
+    "desc": "A - TopNavBarBuildJobNotification",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": null,
+    "id": "TopNavBarGroupDashboard",
+    "class": [
+      "nav-link",
+      "topNavBarItemIcon"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[5]/a[1]",
+    "desc": "A - TopNavBarGroupDashboard",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "그룹",
+    "id": "TopNavBarGroupDashboardGoToGroupBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[5]/div[1]/a[1]",
+    "desc": "A - 그룹",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "프로젝트",
+    "id": "TopNavBarGroupDashboardGoToNormalBtn",
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[5]/div[1]/a[2]",
+    "desc": "A - 프로젝트",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "Admin",
+    "id": "TopNavBarUserInfoDropDownBtn",
+    "class": [
+      "nav-link",
+      "dropdown-toggle",
+      "topNavBarItem"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[7]/a[1]",
+    "desc": "A - Admin",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "사용자 정보 관리",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[7]/div[1]/a[1]",
+    "desc": "A - 사용자 정보 관리",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "로그아웃",
+    "id": null,
+    "class": [
+      "dropdown-item",
+      "topnavbar-dropdown-item"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[2]/li[7]/div[1]/a[2]",
+    "desc": "A - 로그아웃",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "http://www.apache.org/licenses/",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[1]",
+    "desc": "A - http://www.apache.org/licenses/",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "https://www.hancom.com/etc/hwpDownload.do",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[2]",
+    "desc": "A - https://www.hancom.com/etc/hwpDownload.do",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "https://github.com/neolord0/hwplib",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[3]",
+    "desc": "A - https://github.com/neolord0/hwplib",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "GNU Affero General Public License v3.0",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[4]",
+    "desc": "A - GNU Affero General Public License v3.0",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "<http://www.gnu.org/licenses/>.",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[8]/div[1]/div[1]/div[2]/table[1]/tbody[1]/tr[1]/td[1]/a[5]",
+    "desc": "A - <http://www.gnu.org/licenses/>.",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "사용자 설정",
+    "id": "userSetting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail",
+      "isSelect"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[1]/a[1]",
+    "desc": "A - 사용자 설정",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "SCM 설정",
+    "id": "scmSetting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[2]/a[1]",
+    "desc": "A - SCM 설정",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "라이선스 설정",
+    "id": "licenseSetting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[3]/a[1]",
+    "desc": "A - 라이선스 설정",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "시험 도구 설정",
+    "id": "cscSetting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[4]/a[1]",
+    "desc": "A - 시험 도구 설정",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "부가 설정",
+    "id": "additionalSetting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[5]/a[1]",
+    "desc": "A - 부가 설정",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "세션 관리",
+    "id": "sessionSetting-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[6]/a[1]",
+    "desc": "A - 세션 관리",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "자동 업데이트",
+    "id": "autoUpdate-tab",
+    "class": [
+      "nav-link",
+      "sidebar_contents_detail"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[1]/div[1]/ul[1]/li[7]/a[1]",
+    "desc": "A - 자동 업데이트",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "<",
+    "id": "globalSettingUserList_previous",
+    "class": [
+      "paginate_button",
+      "previous",
+      "disabled"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[3]/a[1]",
+    "desc": "A - <",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": "1",
+    "id": null,
+    "class": [
+      "paginate_button",
+      "current"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[3]/span[1]/a[1]",
+    "desc": "A - 1",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "a",
+    "text": ">",
+    "id": "globalSettingUserList_next",
+    "class": [
+      "paginate_button",
+      "next",
+      "disabled"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[3]/a[2]",
+    "desc": "A - >",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarPrjSearch",
+    "class": [
+      "form-control",
+      "projectListDropdownSearch"
+    ],
+    "name": null,
+    "placeholder": "프로젝트 검색",
+    "aria-label": null,
+    "type_attr": "search",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/ul[1]/li[1]/div[1]/div[1]/input[1]",
+    "desc": "INPUT - TopNavBarPrjSearch",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqUiModeKey",
+    "class": null,
+    "name": "reqUiModeKey",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[1]",
+    "desc": "INPUT - reqUiModeKey",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqReportModeKey",
+    "class": null,
+    "name": "reqReportModeKey",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[2]",
+    "desc": "INPUT - reqReportModeKey",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqProjectId",
+    "class": null,
+    "name": "reqProjectId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[3]",
+    "desc": "INPUT - reqProjectId",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqRevisionNum",
+    "class": null,
+    "name": "reqRevisionNum",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[4]",
+    "desc": "INPUT - reqRevisionNum",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqAccessUserId",
+    "class": null,
+    "name": "reqAccessUserId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[5]",
+    "desc": "INPUT - reqAccessUserId",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqModifyUserId",
+    "class": null,
+    "name": "reqModifyUserId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[6]",
+    "desc": "INPUT - reqModifyUserId",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataReqToolType",
+    "class": null,
+    "name": "reqToolType",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[7]",
+    "desc": "INPUT - reqToolType",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataCurrentPageUrl",
+    "class": null,
+    "name": "currentPageUrl",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[8]",
+    "desc": "INPUT - currentPageUrl",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataCurrentTab",
+    "class": null,
+    "name": "currentTab",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[9]",
+    "desc": "INPUT - currentTab",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarRtmsCommonDataContextRoot",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[10]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "TopNavBarReqRemoteAddr",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[11]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "KnowledgeHubBoardCategory",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[12]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "KnowledgeHubBoardType",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[13]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataViewType",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[14]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataReadId",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[15]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataRuleSet",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[16]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": "knowledgeHubDataRule",
+    "class": null,
+    "name": "contextRoot",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[1]/input[17]",
+    "desc": "INPUT - contextRoot",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "projectId",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[1]",
+    "desc": "INPUT - projectId",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "revisionNum",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[2]",
+    "desc": "INPUT - revisionNum",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "file",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[3]",
+    "desc": "INPUT - file",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": "line",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "hidden",
+    "xpath": "/[document][1]/html[1]/body[1]/nav[1]/form[2]/input[4]",
+    "desc": "INPUT - line",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [],
+    "name": null,
+    "placeholder": "검색어를 입력하세요.",
+    "aria-label": null,
+    "type_attr": "search",
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/label[1]/input[1]",
+    "desc": "INPUT - unnamed (type=search; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "text",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/div[1]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=text; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "text",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/div[2]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=text; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "password",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[2]/div[1]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=password; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "password",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[2]/div[2]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=password; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "text",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[3]/div[1]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=text; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "text",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[3]/div[2]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=text; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "input",
+    "text": null,
+    "id": null,
+    "class": [
+      "form-control",
+      "custom-input"
+    ],
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": "text",
+    "xpath": "/[document][1]/html[1]/body[1]/div[14]/div[1]/div[1]/div[2]/div[1]/div[1]/div[3]/div[3]/div[3]/div[2]/input[1]",
+    "desc": "INPUT - unnamed (class=form-control,custom-input; type=text; xpath-depth=14)",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "select",
+    "text": "103050100",
+    "id": null,
+    "class": [],
+    "name": "globalSettingUserList_length",
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[1]/label[1]/select[1]",
+    "desc": "SELECT - 103050100",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "label",
+    "text": "103050100",
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[1]/label[1]",
+    "desc": "LABEL - 103050100",
+    "url": "/vpes/GlobalSettingUser"
+  },
+  {
+    "tag": "label",
+    "text": null,
+    "id": null,
+    "class": null,
+    "name": null,
+    "placeholder": null,
+    "aria-label": null,
+    "type_attr": null,
+    "xpath": "/[document][1]/html[1]/body[1]/div[13]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/label[1]",
+    "desc": "LABEL - unnamed (xpath-depth=13)",
+    "url": "/vpes/GlobalSettingUser"
+  }
+]
