@@ -18,6 +18,7 @@ def remove_markdown(generated_code: str) -> str:
 
 def insert_sleep_before_assert(generated_code: str) -> str:
     # logger.info() 줄에서 들여쓰기를 유지하여 sleep(2) 삽입
+    # 현재 logger.info()를 쓰지 않아 필요 없을 시 삭제 예정
     generated_code = re.sub(
         r'^(\s*)(log_setting\.logger\.info\(["\']Verifying navigation.*?["\']\))',
         r'\1sleep(2)\n\1\2',
@@ -36,7 +37,6 @@ def patch_unittest_main(generated_code: str) -> str:
         'if __name__ == "__main__":\n    unittest.main(argv=[\'first-arg-is-ignored\'], exit=False)',
         generated_code
     )
-
 
 def patch_teardown(generated_code: str) -> str:
     return re.sub(
@@ -58,14 +58,14 @@ def postprocess_generated_code(generated_code: str) -> str:
     generated_code = patch_teardown(generated_code)
     return generated_code
 
-#======== 매인로직================
+# ================ 매인로직================
 
 # 1. 🔐 환경 변수 로딩
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # 2. 💬 LLM 초기화 (gpt-4o-mini)
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="gpt-4.1", temperature=0)
 
 # 3. 🧠 임베딩 모델 로드
 #embedding = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -92,7 +92,6 @@ move_menu_db = Chroma(
     collection_name="move_menu"
 )
 
-
 # 5. 🌐 기본 URL
 BASE_URL = "http://localhost:38080"
 
@@ -104,10 +103,10 @@ prompt = PromptTemplate(
 
     아래는 웹 페이지의 HTML DOM 요소 목록(context)과  
     기능 함수 요약(function_context), 그리고 테스트 시나리오(question)입니다.
-    
-    
+
+
     다음 지침을 반드시 지키세요:
-    
+
     ✅ [기본 테스트 코드 구조]
     - `unittest.TestCase` 클래스를 사용하세요.
     - `setUp()`에서는 `default_setting.setup()`을 통해 WebDriver를 초기화하세요.
@@ -117,7 +116,7 @@ prompt = PromptTemplate(
     - 각 단계별로 어떤 동작을 하는 단계인지 주석 달아주세요.
     - `tearDown()`에서는 결과 업로드 및 `driver.quit()`을 반드시 호출하세요.
     - `if __name__ == "__main__":` 구문도 포함하세요.
-    
+
     ✅ [기존 함수 활용 지침]
     - 아래의 `function_context`는 default_setting.py 및 move_menu.py에 정의된 함수들의 요약입니다.
     - default_setting.login(driver)는 로그인 후 자동으로 메인 페이지(/vpes)로 이동합니다.
@@ -130,7 +129,7 @@ prompt = PromptTemplate(
     - 최대한 간결하게, 제공된 함수들을 활용해 테스트 코드를 구성하세요.
     - 각 함수 요약에 명시된 `모듈` 정보를 따라 정확하게 import하여 사용하세요.
     - 예: `모듈: default_setting`이면 → `default_setting.create_project(...)`
-    
+
     ✅ [셀렉터 우선순위 및 규칙]
     - 각 DOM 요소는 반드시 아래 우선순위에 따라 선택하세요:
       1. ID가 있으면 → 반드시 By.ID 사용
@@ -138,55 +137,80 @@ prompt = PromptTemplate(
       3. ID와 class가 모두 없으면 → context에 제공된 XPath를 그대로 사용
     - 셀렉터 값은 반드시 context에 명시된 값만 사용하세요.
     - 절대 임의 생성하거나 유추하지 마세요.
-    
+
     ✅ [자연어 ↔ DOM 요소 매핑 지침]
     - 시나리오에서 언급된 의미를 이해하고,
     - context의 `text` 또는 `description` 필드에서 의미적으로 가장 유사한 DOM 요소를 선택하세요.
     - 해당 DOM 요소의 ID, class, xpath는 context에 나온 값만 사용하세요.
     - 절대 임의 추측으로 생성하지 마세요.
     - ID, class 등은 자연어 표현과 다를 수 있습니다. 의미적 유사도를 기준으로 정확히 매핑하세요.
-    
+
     ❗ [URL 기준 DOM 요소 선택 지침]
     - 시나리오와 의미적으로 가장 유사한 URL (Full URL 기준)의 DOM 요소만 선택하세요.
     - 예: 시나리오에 "로그인 페이지"라고 되어 있다면, "/vpes/login"으로 끝나는 URL의 요소만 사용해야 합니다.
     - 관련 없는 URL의 DOM 요소는 절대 사용하지 마세요.
-    
+
     ✅ [driver.get() 구성]
     - context에서 추출한 상대경로 예: "/vpes/xxx"
     - 아래처럼 전체 URL을 구성해 사용하세요:
-    
+
       target_url = "/vpes/xxx"
       page_url = "http://localhost:38080" + target_url
       driver.get(page_url)
-    
+
     ---
-    
+
     ## DOM 요소 목록 (context):
     {context}
-    
+
     ## 기능 함수 요약 (function_context):
     {function_context}
-    
+
     ## 테스트 시나리오 (question):
     {question}
-    
+
     ---
-    
+
     정확하고 실행 가능한 Python Selenium 테스트 코드를 생성하세요.
-    ❗ 오직 코드만 출력하세요. 주석, 설명, 마크다운 금지
-    ❗ 절대 코드 블록(```python`), 마크다운, 주석 등을 포함하지 마세요.
+    ❗ 오직 코드와 고드에 대한 주석만 출력하세요. 마크다운 금지
+    ❗ 절대 코드 블록(```python`), 마크다운 등을 포함하지 마세요.
     오직 파이썬 코드만 출력하세요. 출력 시작 전에 아무것도 붙이지 마세요.
     """
 )
 
-# 7. 사용자 입력
+# 7.테스트케이스 명 및 테스트 시나리오 입력
+tc_name = input("테스트케이스명을 입력하세요 (예: C8270): ").strip()
 query = input("💬 테스트 시나리오를 자연어로 입력하세요:\n> ").strip()
 
+
+# 의미 기반 URL 필터링
+# 시나리오에서 키워드 추출
+def extract_keywords(text):
+    return [word.lower() for word in re.findall(r'\w+', text) if len(word) > 1]
+
+keywords = extract_keywords(query)
+
+# 1. 전체 문서 가져오기 (메타데이터 포함)
+all_docs = db._collection.get(include=["metadatas", "documents"], limit=1000)
+
+# 2. url 키워드 포함된 것만 필터링
+filtered_indices = [
+    i for i, meta in enumerate(all_docs["metadatas"])
+    if any(kw in (meta.get("url") or "").lower() for kw in keywords)
+]
+
+# 3. 해당 문서 추출
+filtered_dom_docs_raw = {
+    "metadatas": [all_docs["metadatas"][i] for i in filtered_indices],
+    "documents": [all_docs["documents"][i] for i in filtered_indices]
+}
+
 # 8-1. 전체 문서 로드 (최대 200개 제한)
-dom_docs_raw = db._collection.get(include=["metadatas", "documents"], limit=200)
+#dom_docs_raw = db._collection.get(include=["metadatas", "documents"], limit=300)
 dom_docs = [
     type("Doc", (object,), {"metadata": meta, "page_content": doc})
-    for doc, meta in zip(dom_docs_raw["documents"], dom_docs_raw["metadatas"])
+    for doc, meta in zip(filtered_dom_docs_raw["documents"], filtered_dom_docs_raw["metadatas"])
+
 ]
 
 # 8.2 default_setting 요약 문서 로드
@@ -201,12 +225,6 @@ move_menu_docs = [
     type("Doc", (object,), {"metadata": {}, "page_content": doc})
     for doc in move_menu_docs_raw["documents"]
 ]
-
-# default_setting 함수 요약 확인 로그 출력
-print("\n📌 default_setting 함수 요약 미리보기:")
-for doc in default_docs[:5]:
-    print(doc.page_content)
-    print("-"* 50)
 
 # 9. context 구성
 context = "\n".join([
@@ -224,11 +242,11 @@ context = "\n".join([
 function_context = "\n\n".join(doc.page_content for doc in default_docs + move_menu_docs)
 
 #DOM + 함수 문서를 하나로 병합 (validate 단계용)
-docs = dom_docs + default_docs
-
-
-print("\n🔎 최종 context (LLM에게 전달되는 값):\n")
-print(context[:3000])  # 너무 길면 생략 출력
+# docs = dom_docs + default_docs
+#
+#
+# print("\n🔎 최종 context (LLM에게 전달되는 값):\n")
+# print(context[:3000])  # 너무 길면 생략 출력
 
 print("\n📌 context에 포함된 ID 목록:")
 for doc in dom_docs:
@@ -250,8 +268,25 @@ generated_code = chain.invoke({
     "question": query
 })
 
+# 클래스명을 사용자 입력 값으로 변경
+generated_code = re.sub(
+    r'class [a-zA-Z0-9_]*\(unittest\.TestCase\):',
+    f'class {tc_name}(unittest.TestCase):',
+    generated_code,
+    count=1
+)
+
+# 함수명을 사용자 입력 값으로 변경
+generated_code = re.sub(
+    r'def test_[a-zA-Z0-9_]*\(',
+    f'def test_{tc_name}(',
+    generated_code,
+    count=1
+)
+
+
 # 11. 후처리 수행
-generated_code = validate_generated_code(generated_code, docs, auto_fix=True)
+generated_code = validate_generated_code(generated_code, dom_docs + default_docs, auto_fix=True)
 generated_code = postprocess_generated_code(generated_code)
 
 # 12. 출력 및 저장
@@ -260,7 +295,7 @@ print("=" * 60)
 print(generated_code)
 print("=" * 60)
 
-file_name = "generated_test_final.py"
+file_name = f"{tc_name}.py"
 with open(file_name, "w", encoding="utf-8") as f:
     f.write(generated_code)
 
