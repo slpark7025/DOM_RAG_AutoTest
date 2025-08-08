@@ -113,9 +113,12 @@ prompt = PromptTemplate(
     - case_id를 반드시 import 문 아래에 선언하세요:
     - `case_id`는 아래처럼 추출하세요:
       => case_id = os.path.basename(os.path.splitext(__file__)[0])
-    - 각 단계별로 어떤 동작을 하는 단계인지 주석 달아주세요.
-    - `tearDown()`에서는 결과 업로드 및 `driver.quit()`을 반드시 호출하세요.
+    - 각 주요 단계에는 반드시 **숫자 + 마침표 + 간단한 한 줄 설명** 형태의 주석을 작성하세요.
+      => ❌절대 추가 설명을 덧붙이지 마세요. 예) "XPath로만 제공됨", "class=btn" 이런 표현은 금지입니다.
+      => ❌주석은 사람이 읽기 쉬운 한 줄 요약만 작성하세요. 절대 설명을 덧붙이지 마세요.
+    - `tearDown()'함수는 TC명 함수 다음에 기입해주세요.
     - `if __name__ == "__main__":` 구문도 포함하세요.
+    - import 선언은 모두 맨 윗단에 작성하세요.
 
     ✅ [기존 함수 활용 지침]
     - 아래의 `function_context`는 default_setting.py 및 move_menu.py에 정의된 함수들의 요약입니다.
@@ -172,9 +175,6 @@ prompt = PromptTemplate(
     ---
 
     정확하고 실행 가능한 Python Selenium 테스트 코드를 생성하세요.
-    ❗ 오직 코드와 고드에 대한 주석만 출력하세요. 마크다운 금지
-    ❗ 절대 코드 블록(```python`), 마크다운 등을 포함하지 마세요.
-    오직 파이썬 코드만 출력하세요. 출력 시작 전에 아무것도 붙이지 마세요.
     """
 )
 
