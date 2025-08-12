@@ -8,6 +8,7 @@ import os
 
 # 크롬 드라이버 실행
 driver = webdriver.Chrome()
+wait = WebDriverWait(driver, 15)
 
 # 기본 폴더 생성
 os.makedirs("html_pages/projects", exist_ok=True)
@@ -84,13 +85,36 @@ saved_modals = set()
 for menu_name, path in menu_paths.items():
     rel_path = f"/vpes/{path}/{slug}"
     url = f"http://10.10.111.41:38080{rel_path}"
+    file_name = f"{path}.html"
+
+    if path == "ProjectDetailFunctionManage":
+        try:
+            driver.get(detail_url)
+            time.sleep(2)
+            # 코드 관리 탭 클릭 (없으면 그냥 넘어감)
+            try:
+                driver.find_element(By.ID, "projectSourceCode-tab").click()
+            except:
+                pass
+            time.sleep(2)
+            # 함수 정보 클릭
+            driver.find_element(By.XPATH, "//a[contains(text(),'함수  정보')]").click()
+            time.sleep(2)  # 페이지 로딩 대기
+            save_html_with_url(f"{menu_path}/{file_name}", driver.page_source, rel_path)
+            print(f"[✅ 저장 완료] {menu_name} → {file_name}")
+
+        except Exception as e:
+            print(f"[⚠️ 함수 정보 저장 실패] {e}")
+
+        continue
+
+    # === 나머지 메뉴는 기존처럼 URL 직접 이동해서 저장 ===
     driver.get(url)
     time.sleep(2)
-
-    file_name = f"{path}.html"
     save_html_with_url(f"{menu_path}/{file_name}", driver.page_source, rel_path)
     print(f"[✅ 저장 완료] {menu_name} → {file_name}")
 
+    # 모달 처리
     for popup_text in popup_button_texts:
         if popup_text in saved_modals:
             continue
