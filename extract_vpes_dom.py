@@ -20,7 +20,7 @@ def save_html_with_url(filepath, html_content, url):
         f.write(url_comment + html_content)
 
 ### 1. 로그인 페이지 접속 및 저장
-login_url = "http://10.10.111.41:38080/vpes/login"
+login_url = "http://localhost:38080/vpes/login"
 driver.get(login_url)
 time.sleep(2)
 save_html_with_url("html_pages/login.html", driver.page_source, "/vpes/login")
@@ -33,7 +33,7 @@ driver.find_element(By.XPATH, '//button[contains(text(), "로그인")]').click()
 time.sleep(3)
 
 ### 3. 대시보드 저장
-dashboard_url = "http://10.10.111.41:38080/vpes"
+dashboard_url = "http://localhost:38080/vpes"
 driver.get(dashboard_url)
 time.sleep(2)
 save_html_with_url("html_pages/dashboard.html", driver.page_source, "/vpes")
@@ -49,7 +49,7 @@ os.makedirs(menu_path, exist_ok=True)
 
 ### 5. 프로젝트 개요 페이지 저장
 detail_path = f"/vpes/ProjectReliabilityProcess/{slug}"
-detail_url = f"http://10.10.111.41:38080{detail_path}"
+detail_url = f"http://localhost:38080{detail_path}"
 driver.get(detail_url)
 time.sleep(2)
 save_html_with_url(f"{project_path}/ProjectReliabilityProcess.html", driver.page_source, detail_path)
@@ -84,14 +84,13 @@ saved_modals = set()
 ### 7. 메뉴 순회 저장
 for menu_name, path in menu_paths.items():
     rel_path = f"/vpes/{path}/{slug}"
-    url = f"http://10.10.111.41:38080{rel_path}"
+    url = f"http://localhost:38080{rel_path}"
     file_name = f"{path}.html"
 
     if path == "ProjectDetailFunctionManage":
         try:
             driver.get(detail_url)
             time.sleep(2)
-            # 코드 관리 탭 클릭 (없으면 그냥 넘어감)
             try:
                 driver.find_element(By.ID, "projectSourceCode-tab").click()
             except:
@@ -147,11 +146,11 @@ for menu_name, path in menu_paths.items():
 
 ### 8. 상단 메뉴 저장
 top_menu_pages = {
-    "과제 정보 조회": "http://10.10.111.41:38080/vpes/ProjectHistory",
-    "Knowledge Hub": "http://10.10.111.41:38080/vpes/KnowledgeHub/Dashboard",
-    "설정": "http://10.10.111.41:38080/vpes/GlobalSettingUser",
-    "도움말": "http://10.10.111.41:38080/vpes/HelpMetric",
-    "그룹": "http://10.10.111.41:38080/vpes/ProjectGroup",
+    "과제 정보 조회": "http://localhost:38080/vpes/ProjectHistory",
+    "Knowledge Hub": "http://localhost:38080/vpes/KnowledgeHub/Dashboard",
+    "설정": "http://localhost:38080/vpes/GlobalSettingUser",
+    "도움말": "http://localhost:38080/vpes/HelpMetric",
+    "그룹": "http://localhost:38080/vpes/ProjectGroup",
 }
 top_menu_path = "html_pages/top_menu"
 os.makedirs(top_menu_path, exist_ok=True)
