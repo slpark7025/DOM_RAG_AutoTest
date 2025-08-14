@@ -47,15 +47,7 @@ project_path = f"html_pages/projects/{slug}"
 menu_path = f"{project_path}/menus"
 os.makedirs(menu_path, exist_ok=True)
 
-### 5. 프로젝트 개요 페이지 저장
-detail_path = f"/vpes/ProjectReliabilityProcess/{slug}"
-detail_url = f"http://localhost:38080{detail_path}"
-driver.get(detail_url)
-time.sleep(2)
-save_html_with_url(f"{project_path}/ProjectReliabilityProcess.html", driver.page_source, detail_path)
-print("[✅ 저장 완료] ProjectReliabilityProcess.html")
-
-### 6. 메뉴 목록
+### 5. 메뉴 목록
 menu_paths = {
     "프로젝트 개요": "ProjectReliabilityProcess",
     "기술 문서 검증": "ProjectDocVerification",
@@ -81,7 +73,7 @@ menu_paths = {
 popup_button_texts = ["SCM 설정", "LLM 설정"]
 saved_modals = set()
 
-### 7. 메뉴 순회 저장
+### 6. 메뉴 순회 저장
 for menu_name, path in menu_paths.items():
     rel_path = f"/vpes/{path}/{slug}"
     url = f"http://localhost:38080{rel_path}"
@@ -144,7 +136,7 @@ for menu_name, path in menu_paths.items():
         except Exception as e:
             print(f"[⚠️ {popup_text} 버튼 실패] {menu_name}: {e}")
 
-### 8. 상단 메뉴 저장
+### 7. 상단 메뉴 저장
 top_menu_pages = {
     "과제 정보 조회": "http://localhost:38080/vpes/ProjectHistory",
     "Knowledge Hub": "http://localhost:38080/vpes/KnowledgeHub/Dashboard",
@@ -163,5 +155,5 @@ for name, url in top_menu_pages.items():
     save_html_with_url(f"{top_menu_path}/{safe_name}.html", driver.page_source, rel_path)
     print(f"[✅ 저장 완료] {name} → {safe_name}.html")
 
-### 9. 종료
+### 8. 종료
 driver.quit()
