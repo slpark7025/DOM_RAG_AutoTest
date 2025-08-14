@@ -1,8 +1,9 @@
 import os
 import json
 from bs4 import BeautifulSoup, Comment
+from bs4.element import Tag  # ✅ leaf div 판별에 사용
 
-TARGET_TAGS = ["button", "a", "input", "select", "textarea", "label"]
+TARGET_TAGS = ["button", "a", "input", "select", "textarea", "label", "th", "span", "p", "form", "font"]
 INPUT_DIR = "html_pages"
 OUTPUT_DIR = "extracted_json"
 
@@ -26,6 +27,12 @@ def build_xpath(el):
         el = el.parent
     return "/" + "/".join(parts)
 
+def is_leaf_div(el):
+    """하위에 다른 태그(Tag)가 없는 말단 div인지 판별"""
+    if el.name != "div":
+        return False
+    return not any(isinstance(child, Tag) for child in el.children)
+
 def extract_elements_from_html(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
         soup = BeautifulSoup(f, "lxml")
@@ -43,6 +50,8 @@ def extract_elements_from_html(file_path):
         print(f"[⚠️ 경고] {rel_path} → source_url 주석 없음")
 
     elements = []
+
+    # 기존 TARGET_TAGS 수집
     for tag in TARGET_TAGS:
         for el in soup.find_all(tag):
             info = {
@@ -59,6 +68,25 @@ def extract_elements_from_html(file_path):
                 "url": source_url  # ✅ 모든 요소에 동일한 URL 삽입
             }
             elements.append(info)
+
+    # ✅ 하위 요소가 없는 말단 div 추가 수집
+    for el in soup.find_all("div"):
+        if is_leaf_div(el):
+            info = {
+                "tag": "div",
+                "text": el.get_text(strip=True) or None,
+                "id": el.get("id"),
+                "class": el.get("class"),
+                "name": el.get("name"),
+                "placeholder": el.get("placeholder"),
+                "aria-label": el.get("aria-label"),
+                "type_attr": el.get("type"),
+                "xpath": build_xpath(el),
+                "desc": f"DIV - {el.get_text(strip=True) or el.get('name') or el.get('id') or 'unnamed'}",
+                "url": source_url
+            }
+            elements.append(info)
+
     return elements
 
 def main():
