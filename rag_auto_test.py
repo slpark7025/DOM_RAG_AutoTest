@@ -123,7 +123,7 @@ def build_selector_inventory(dom_docs):
     return allowed_ids, xpath_pool
 
 def pick_best_xpath(xpath_pool, keywords):
-    """키워드와 blob(텍스트/설명)을 단순 매칭해서 가장 관련도 높은 XPath 선택"""
+    """키워드와 blob(text/desc/tag 조합)을 단순 매칭해서 가장 관련도 높은 XPath 선택"""
     best = None
     best_score = -1
     for item in xpath_pool:
