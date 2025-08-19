@@ -128,13 +128,51 @@ def postprocess_generated_code(generated_code: str) -> str:
     """전체 후처리 통합"""
     generated_code = remove_markdown(generated_code)
     generated_code = insert_sleep_before_assert(generated_code)
-    generated_code = patch_unittest_main(generated_code)
     generated_code = patch_teardown(generated_code)
+    generated_code = patch_unittest_main(generated_code)
+
     # 필수 import 보강
     generated_code = ensure_import(generated_code, "import unittest")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.common.by import By")
     generated_code = ensure_import(generated_code, "import default_setting")
+
+    before = generated_code
+    generated_code = strip_document_prefix_xpaths(generated_code)
+    if before != generated_code:
+        print("🔧 Stripped '/[document][n]/' prefix from XPaths.")
+
     return generated_code
+
+
+def strip_document_prefix_xpaths(g: str) -> str:
+    """
+    (By.XPATH, "...") 형태의 문자열 중
+    XPath가 '/[document]/' 또는 '/[document][숫자]/' 로 시작하면 그 프리픽스만 제거.
+    예) '/[document][1]/html[1]/body[1]/...' -> '/html[1]/body[1]/...'
+    """
+    # 1) 문자열 앞의 '/[document][n]/' 패턴만 없애는 헬퍼
+    def _fix(xp: str) -> str:
+        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
+
+    # 2) 공통 치환기: (By.XPATH, "...") 캡처해서 내부만 교체
+    def _repl_tuple(m):
+        quote = m.group(2)
+        xp = m.group(3)
+        fixed = _fix(xp)
+        return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
+
+    # (a) (By.XPATH, "…")  — EC, until 등 모든 튜플 인자
+    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+
+    # (b) .find_element(By.XPATH, "…")
+    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+
+    # (c) .find_elements(By.XPATH, "…")  (있을 수도 있으니 케어)
+    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+
+    return g
+
+
 
 
 # ========================= 선택 DB 라우팅 & 검색 =========================
@@ -270,7 +308,22 @@ def main():
   target_url = "/vpes/xxx"
   page_url = "http://localhost:38080" + target_url
   driver.get(page_url)
+  
 
+# [ASSERT 규칙]
+- '확인'이라는 단어가 포함된 문장이며 보통 사용자가 입력하는 테스트 시나리오의 가장 마지막 문장일 경우가 대부분.
+- 금지: driver.page_source(문자열 포함/카운트), 하드 sleep만으로의 검증, 전역 텍스트 검색.
+- 표(테이블/그리드) 검증일 때:
+  1) 내가 선택·변경한 행의 **키 값(예: 파일명)** 을 변수로 캡처한다.
+  2) 헤더 텍스트로 열 인덱스를 구해 해당 셀의 텍스트/상태를 검증한다.
+  3) 표가 비어 있으면 즉시 실패(“데이터가 존재하지 않습니다.” 탐지 또는 tbody tr 개수 0 확인).
+  4) page_source 이용 금지. 행의 셀 텍스트만 검사.
+
+- 비표(버튼/폼/토스트/페이지 전환) 검증일 때:
+  - 토스트/알림: role='alert' 또는 class에 'toast'/'alert'가 포함된 요소의 텍스트로 성공/실패 확인.
+  - URL/라우팅: 예상 경로/쿼리로 이동했는지 확인.
+  - 요소 상태: aria-pressed/disabled/checked/value 변경, 클래스 토글 등 **속성**으로 확인.
+  - 모달/드로어: 열림/닫힘 상태(visibility/display/aria-hidden)로 확인.
 ---
 
 ## DOM 요소 목록 (context):
@@ -286,6 +339,7 @@ def main():
 # [최종 출력 규칙]
 - 오직 **실행 가능한 Python 코드**만 하나의 코드블록으로 출력: ```python ... ```
 - 내부 사고, 근거, 설명 텍스트 출력 금지(주석 규칙 외).
+- tc id 사용하는 class와 함수 외 추가 함수 생성 금지
         """.strip()
     )
 
@@ -323,7 +377,10 @@ def main():
     print("📌 비교용 베이스 경로들:", base_paths)
 
     # 7) 선택된 DB 폴더만 대상으로 Retrieval
-    selected_dirs = select_chroma_dirs(CHROMA_BASE_DIR, inputs)
+    #selected_dirs = select_chroma_dirs(CHROMA_BASE_DIR, inputs)
+    match_keys = inputs + base_paths + [os.path.basename(p) for p in base_paths]
+    selected_dirs = select_chroma_dirs(CHROMA_BASE_DIR, match_keys)
+
     if not selected_dirs:
         # 폴더명에 매치되는 게 없으면 전체 DB 대상으로 fallback
         print(f"[경고] 입력 텍스트와 일치하는 DB 폴더가 없습니다. 전체 DB 대상으로 검색합니다.")
