@@ -6,6 +6,8 @@ from selenium.common.exceptions import TimeoutException
 import time
 import os
 
+from urllib.parse import urlsplit
+
 # 크롬 드라이버 실행
 driver = webdriver.Chrome()
 wait = WebDriverWait(driver, 15)
@@ -47,9 +49,17 @@ project_path = f"html_pages/projects/{slug}"
 menu_path = f"{project_path}/menus"
 os.makedirs(menu_path, exist_ok=True)
 
-### 5. 메뉴 목록
+### 5. 프로젝트 개요 페이지 저장
+detail_path = f"/vpes/ProjectReliabilityProcess/{slug}"
+detail_url = f"http://localhost:38080{detail_path}"
+driver.get(detail_url)
+time.sleep(2)
+save_html_with_url(f"{project_path}/ProjectReliabilityProcess.html", driver.page_source, detail_path)
+print("[✅ 저장 완료] ProjectReliabilityProcess.html")
+
+### 6. 메뉴 목록
 menu_paths = {
-    "프로젝트 개요": "ProjectReliabilityProcess",
+    #"프로젝트 개요": "ProjectReliabilityProcess",
     "기술 문서 검증": "ProjectDocVerification",
     "기술 문서 검증 결과": "ProjectDocResult",
     "파일 정보": "ProjectDetailFileManage",
@@ -73,7 +83,7 @@ menu_paths = {
 popup_button_texts = ["SCM 설정", "LLM 설정"]
 saved_modals = set()
 
-### 6. 메뉴 순회 저장
+### 7. 메뉴 순회 저장
 for menu_name, path in menu_paths.items():
     rel_path = f"/vpes/{path}/{slug}"
     url = f"http://localhost:38080{rel_path}"
@@ -136,10 +146,12 @@ for menu_name, path in menu_paths.items():
         except Exception as e:
             print(f"[⚠️ {popup_text} 버튼 실패] {menu_name}: {e}")
 
-### 7. 상단 메뉴 저장
+### 8. 상단 메뉴 저장
 top_menu_pages = {
     "과제 정보 조회": "http://localhost:38080/vpes/ProjectHistory",
-    "Knowledge Hub": "http://localhost:38080/vpes/KnowledgeHub/Dashboard",
+    "Knowledge Hub 대시보드": "http://localhost:38080/vpes/KnowledgeHub/Dashboard",
+    "Knowledge Hub 정적검증 - 규칙": "http://10.10.111.41:38080/vpes/KnowledgeHub/Board/STATIC/RULE",
+    "Knowledge Hub 정적검증 - 개선 예제": "http://10.10.111.41:38080/vpes/KnowledgeHub/Board/STATIC/EXAMPLE",
     "설정": "http://localhost:38080/vpes/GlobalSettingUser",
     "도움말": "http://localhost:38080/vpes/HelpMetric",
     "그룹": "http://localhost:38080/vpes/ProjectGroup",
@@ -150,10 +162,31 @@ os.makedirs(top_menu_path, exist_ok=True)
 for name, url in top_menu_pages.items():
     driver.get(url)
     time.sleep(2)
-    safe_name = url.strip("/").split("/")[-1]
-    rel_path = "/" + "/".join(url.split("/")[3:])  # /vpes/...
-    save_html_with_url(f"{top_menu_path}/{safe_name}.html", driver.page_source, rel_path)
-    print(f"[✅ 저장 완료] {name} → {safe_name}.html")
 
-### 8. 종료
+    parsed = urlsplit(url)
+    # 경로만 분해 (빈 조각 제거) → ['vpes','KnowledgeHub','Board','STATIC','RULE']
+    parts_all = [p for p in parsed.path.split('/') if p]
+    # /vpes 다음만 사용
+    if "vpes" in parts_all:
+        vpes_idx = parts_all.index("vpes")
+        parts = parts_all[vpes_idx + 1:]
+        rel_path = "/" + "/".join(parts_all[vpes_idx:])  # HTML 주석용: /vpes/...
+    else:
+        parts = parts_all
+        rel_path = parsed.path if parsed.path.startswith("/") else "/" + parsed.path
+
+    # 저장 경로 구성
+    if not parts:
+        file_path = os.path.join(top_menu_path, "index.html")
+    elif len(parts) > 1:
+        dir_path = os.path.join(top_menu_path, *parts[:-1])
+        os.makedirs(dir_path, exist_ok=True)
+        file_path = os.path.join(dir_path, parts[-1] + ".html")
+    else:
+        file_path = os.path.join(top_menu_path, parts[0] + ".html")
+
+    save_html_with_url(file_path, driver.page_source, rel_path)
+    print(f"[✅ 저장 완료] {name} → {file_path}")
+
+### 9. 종료
 driver.quit()
