@@ -5,8 +5,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import time
 import os
-
+import re
 from urllib.parse import urlsplit
+from pathlib import Path
 
 # 크롬 드라이버 실행
 driver = webdriver.Chrome()
@@ -150,8 +151,8 @@ for menu_name, path in menu_paths.items():
 top_menu_pages = {
     "과제 정보 조회": "http://localhost:38080/vpes/ProjectHistory",
     "Knowledge Hub 대시보드": "http://localhost:38080/vpes/KnowledgeHub/Dashboard",
-    "Knowledge Hub 정적검증 - 규칙": "http://10.10.111.41:38080/vpes/KnowledgeHub/Board/STATIC/RULE",
-    "Knowledge Hub 정적검증 - 개선 예제": "http://10.10.111.41:38080/vpes/KnowledgeHub/Board/STATIC/EXAMPLE",
+    "Knowledge Hub 정적검증 - 규칙": "http://localhost:38080/vpes/KnowledgeHub/Board/STATIC/RULE",
+    "Knowledge Hub 정적검증 - 개선 예제": "http://localhost:38080/vpes/KnowledgeHub/Board/STATIC/EXAMPLE",
     "설정": "http://localhost:38080/vpes/GlobalSettingUser",
     "도움말": "http://localhost:38080/vpes/HelpMetric",
     "그룹": "http://localhost:38080/vpes/ProjectGroup",
@@ -187,6 +188,51 @@ for name, url in top_menu_pages.items():
 
     save_html_with_url(file_path, driver.page_source, rel_path)
     print(f"[✅ 저장 완료] {name} → {file_path}")
+
+
+def save_detail_trimmed(url):
+    """
+    RULE/EXAMPLE 상세 URL을
+    html_pages/top_menu/KnowledgeHub/Board/STATIC/{RULE|EXAMPLE}/READ.html 로 저장
+    """
+    driver.get(url)
+    time.sleep(2)
+
+    parsed = urlsplit(driver.current_url)
+    path = parsed.path
+
+    # /vpes/KnowledgeHub/Board/READ/STATIC/RULE/...  또는  .../EXAMPLE/...
+    m = re.search(r"/vpes/KnowledgeHub/Board/READ/STATIC/(RULE|EXAMPLE)", path, re.IGNORECASE)
+    if not m:
+        print(f"[⚠️ 저장 스킵] 예상 경로 아님: {path}")
+        return
+
+    page_type = m.group(1).upper()   # RULE or EXAMPLE
+
+    # 저장 폴더: .../STATIC/RULE/ 또는 .../STATIC/EXAMPLE/
+    base_dir = Path("html_pages/top_menu/KnowledgeHub/Board/STATIC") / page_type
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    # 파일명: READ.html (ID 사용하지 않음)
+    out_path = base_dir / "READ.html"
+
+    # 원본 경로는 READ 포함한 실제 상세 URL로 남김
+    rel_path = path
+    save_html_with_url(str(out_path), driver.page_source, rel_path)
+    print(f"[✅ 저장 완료] {page_type} → {out_path}")
+
+# ===== 여러 상세 페이지를 딕셔너리로 관리 =====
+detail_pages = {
+    "Knowledgehub RULE 예시(뒤 식별자 수정 필요) ": "http://localhost:38080/vpes/KnowledgeHub/Board/READ/STATIC/RULE/e6daa48c8f110d6a9c512531",
+    "Knowledgehub EXAMPLE 예시(뒤 식별자 수정 필요) ": "http://localhost:38080/vpes/KnowledgeHub/Board/READ/STATIC/EXAMPLE/22931c3e7de14a3b9c72b96b9d11f96c1755667602163",
+    # 필요 시 추가
+}
+
+for name, url in detail_pages.items():
+    try:
+        save_detail_trimmed(url)
+    except Exception as e:
+        print(f"[⚠️ {name} 저장 실패] {e}")
 
 ### 9. 종료
 driver.quit()
