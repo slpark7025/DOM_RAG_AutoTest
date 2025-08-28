@@ -297,7 +297,7 @@ def main():
 
 # [셀렉터 규칙]
 - ID > CLASS/CSS > XPath 순.
-- 값은 context에 명시된 것만 사용. 임의 생성 금지.
+
 
 # [자연어 ↔ DOM 매핑]
 - 시나리오 의미와 context의 text/description을 의미적으로 매칭.
@@ -312,7 +312,7 @@ def main():
 
 # [ASSERT 규칙]
 - '확인'이라는 단어가 포함된 문장이며 보통 사용자가 입력하는 테스트 시나리오의 가장 마지막 문장일 경우가 대부분.
-- 금지: driver.page_source(문자열 포함/카운트), 하드 sleep만으로의 검증, 전역 텍스트 검색.
+- 금지: driver.page_source(문자열 포함/카운트), 하드 sleep만으로의 검증, 전역 텍스트 검색, URL로 이동에 대한 검증
 - 표(테이블/그리드) 검증일 때:
   1) 내가 선택·변경한 행의 **키 값(예: 파일명)** 을 변수로 캡처한다.
   2) 헤더 텍스트로 열 인덱스를 구해 해당 셀의 텍스트/상태를 검증한다.
@@ -323,7 +323,8 @@ def main():
   - 토스트/알림: role='alert' 또는 class에 'toast'/'alert'가 포함된 요소의 텍스트로 성공/실패 확인.
   - URL/라우팅: 예상 경로/쿼리로 이동했는지 확인.
   - 요소 상태: aria-pressed/disabled/checked/value 변경, 클래스 토글 등 **속성**으로 확인.
-  - 모달/드로어: 열림/닫힘 상태(visibility/display/aria-hidden)로 확인.
+  - 모달/드로어: 열림/닫힘 상태(visibility/display/aria-hidden)로 확인. 
+
 ---
 
 ## DOM 요소 목록 (context):
@@ -467,7 +468,7 @@ def main():
     generated_code = re.sub(r'def test_[a-zA-Z0-9_]*\(', f'def test_{tc_name}(', generated_code, count=1)
 
     # 12) 후처리/검증/가드
-    generated_code = validate_generated_code(generated_code, dom_docs + default_docs, auto_fix=True)
+    generated_code = validate_generated_code(generated_code, dom_docs + default_docs)
     generated_code = enforce_known_selectors(generated_code, dom_docs, query)
     generated_code = postprocess_generated_code(generated_code)
 
