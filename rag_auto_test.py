@@ -26,13 +26,13 @@ def derive_base_path(s: str) -> str:
     return to_base_path(urlsplit(s).path)
 
 def extract_keywords(text):
-    # 영문/숫자 + 한글까지 포함
-    return [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]+', text)]
+    # 포함일반 키워드 - 영문/숫자 + 한글까지
+    words = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣_-]+', text)]
+
     # 대괄호 안 [ ... ] 내용도 추가 (예: [dropdown-more-btn])
     bracket_hints = re.findall(r'\[([^\]]+)\]', text)
     hints = [h.lower() for h in bracket_hints]
     return words + hints
-
 
 def build_selector_inventory(dom_docs):
     """context(dom_docs)에서 허용 가능한 ID 집합과 XPath 후보 풀을 만든다."""
@@ -291,13 +291,41 @@ def rewrite_selectors_per_step(
         # 키워드 점수 + aria/placeholder 포함 가점
         best, best_score = None, -1
         for it in pool:
-            b = it["blob"]
-            s = sum(1 for k in kw if k in b)
-            if any(k in (it["aria"] or "") for k in kw): s += 2
-            if any(k in (it["placeholder"] or "") for k in kw): s += 2
+            b = it["blob"] or ""
+            tag = it.get("tag") or ""
+            xp = it.get("xpath_lower") or ""
+            idv = it.get("id") or ""
+
+            s = 0
+            # 기본 blob 매칭 (text, desc, tag, aria, placeholder 통합)
+            s += sum(1 for k in kw if k in b)
+
+            # aria / placeholder 매칭 → 약한 가점
+            if any(k in (it.get("aria") or "").lower() for k in kw):
+                s += 2
+            if any(k in (it.get("placeholder") or "").lower() for k in kw):
+                s += 2
+
+            # id 매칭 → 강한 가점
+            if any(k in idv.lower() for k in kw):
+                s += 5
+
+            # desc 전용 매칭
+            if any(k in desc for k in kw):
+                s += 4
+
+            # class/xpath 매칭 → 약한 가점
+            if any(k in xp for k in kw):
+                s += 1
+
+            # 태그 힌트 ([button], [span] 등) 매칭 → 강한 가점
+            if any(k == tag for k in kw):
+                s += 10
+
             if s > best_score:
                 best, best_score = it, s
-        return best
+
+    return best
 
     # 단계별 블록 정규식: '# 10.' 헤더부터 다음 '# 11.' 전까지
     for idx, (txt, url) in enumerate(zip(step_texts, step_base_paths), start=1):
