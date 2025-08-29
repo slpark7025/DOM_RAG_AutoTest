@@ -787,9 +787,11 @@ def main():
         docs_n = len(docs_for_base(dom_docs, bp))
         print(f" - STEP {i:02d}: base_path={bp or '-'} dom_count={docs_n}")
 
+
+    #디버그 (최종에선 제외 예정)
     ids = [(getattr(d, "metadata", {}) or {}).get("id")
            for d in docs_for_base(dom_docs, "/vpes/ProjectModify")]
-    print("memberBox in?", "projectRegister-memberBox" in ids)
+    print("in?", "projectRegister-memberBox" in ids) #특정 id가 포함되었는지 확인 시
 
 
     # 9) context 구성 (단계별 URL 스코프로 쪼개서 제공)
