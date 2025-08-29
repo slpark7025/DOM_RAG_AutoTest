@@ -28,6 +28,11 @@ def derive_base_path(s: str) -> str:
 def extract_keywords(text):
     # 영문/숫자 + 한글까지 포함
     return [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣]+', text)]
+    # 대괄호 안 [ ... ] 내용도 추가 (예: [dropdown-more-btn])
+    bracket_hints = re.findall(r'\[([^\]]+)\]', text)
+    hints = [h.lower() for h in bracket_hints]
+    return words + hints
+
 
 def build_selector_inventory(dom_docs):
     """context(dom_docs)에서 허용 가능한 ID 집합과 XPath 후보 풀을 만든다."""
@@ -630,6 +635,7 @@ def main():
 - 제공된 함수가 시나리오와 의미가 같다면 반드시 재사용.
 
 # [셀렉터 규칙]  ID > CLASS/CSS > XPath
+- 단계 텍스트에 괄호로 태그가 명시되면(예: (div)/(span)/(input)/(button)), 해당 태그(또는 괄호 안에 CSS 표기가 있으면 그 CSS)를 최우선으로 선택한다. (우선순위: TagHint/CSSHilt > ID > CSS > XPath)
 
 # [URL 기준 DOM 선택]
 - 시나리오 단계의 @URL을 기준으로 context를 필터링하여 셀렉터 선택.
@@ -653,7 +659,7 @@ def main():
 {question}
 ---
 
-# [URL 기준 DOM 선택]
+# [URL 기준 DOM 선택]eksrP
 - 시나리오 단계의 @URL을 기준으로 context를 필터링하여 셀렉터 선택.
 - 상대경로 "/vpes/xxx"는 아래식으로 Full URL 구성:
   target_url = "/vpes/xxx"
@@ -762,14 +768,14 @@ def main():
 
     # URL별로 최소 문서수 보장
     dom_docs = backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=60,
-                                            hard_cap_per_step=300)
+                                            hard_cap_per_step=200)
 
     # 8) function_context 로드 (있을 때만)
     def safe_load_collection(persist_dir: str, collection_name: str):
         try:
             client = chromadb.PersistentClient(path=persist_dir)
             coll = client.get_collection(name=collection_name)
-            raw = coll.get(include=["documents"], limit=300)
+            raw = coll.get(include=["documents"], limit=200)
             docs = raw.get("documents") or []
             return [type("Doc", (object,), {"metadata": {}, "page_content": d}) for d in docs]
         except Exception:
@@ -791,7 +797,7 @@ def main():
     #디버그 (최종에선 제외 예정)
     ids = [(getattr(d, "metadata", {}) or {}).get("id")
            for d in docs_for_base(dom_docs, "/vpes/ProjectModify")]
-    print("in?", "projectRegister-memberBox" in ids) #특정 id가 포함되었는지 확인 시
+    print("in?", "projectBtn" in ids) #특정 id가 포함되었는지 확인 시
 
 
     # 9) context 구성 (단계별 URL 스코프로 쪼개서 제공)
