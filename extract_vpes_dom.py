@@ -262,18 +262,8 @@ def wait_modal_open(driver, timeout=8):
 
 def save_current_modal(driver, save_path, rel_label):
     with open(save_path, "w", encoding="utf-8") as f:
+        f.write(f"<!-- source_url: {rel_url} -->\n")
         f.write(f"<!-- source_context: {rel_label} -->\n" + driver.page_source)
-    try:
-        modal_elem = driver.find_element(
-            By.CSS_SELECTOR,
-            '.modal.show, .ant-modal, .MuiDialog-paper, [role="dialog"], [aria-modal="true"]'
-        )
-        base, ext = os.path.splitext(save_path)
-        with open(base + "__modalOnly.html", "w", encoding="utf-8") as f2:
-            f2.write(f"<!-- source_context: {rel_label} [modalOnly] -->\n" +
-                     modal_elem.get_attribute("outerHTML"))
-    except Exception:
-        pass
 
 
 def _top_visible_modal(driver, timeout=8):
