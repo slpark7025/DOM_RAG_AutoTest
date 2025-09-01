@@ -19,10 +19,12 @@ wait = WebDriverWait(driver, 15)
 os.makedirs("html_pages/projects", exist_ok=True)
 
 def save_html_with_url(filepath, html_content, url):
-    # HTML 주석 형태로 URL 삽입
-    url_comment = f"<!-- source_url: {url} -->\n"
+    canonical = url.split(" (", 1)[0].strip()   # 괄호 뒤 메모 제거
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write(url_comment + html_content)
+        f.write(f"<!-- source_url: {canonical} -->\n")
+        if canonical != url:
+            f.write(f"<!-- source_context: {url} -->\n")     # 메모는 별도 키로 보존
+        f.write(html_content)
 
 ### 1. 로그인 페이지 접속 및 저장
 login_url = "http://localhost:38080/vpes/login"
@@ -261,11 +263,13 @@ def wait_modal_open(driver, timeout=8):
 
 
 def save_current_modal(driver, save_path, rel_label):
+    # rel_label 예: "/vpes/ProjectDetailFileManage/slug (dropdown-modal: 사용자 파일 지정)"
+    rel_url = rel_label.split(" (", 1)[0].strip()
+
     with open(save_path, "w", encoding="utf-8") as f:
-        f.write(f"<!-- source_url: {rel_url} -->\n")
-        f.write(f"<!-- source_context: {rel_label} -->\n" + driver.page_source)
-
-
+        f.write(f"<!-- source_url: {rel_url} -->\n")          # 추출기가 읽는 키
+        f.write(f"<!-- source_context: {rel_label} -->\n")    # 부가정보(있으면 좋음)
+        f.write(driver.page_source)
 def _top_visible_modal(driver, timeout=8):
     # 화면에 떠있는 모달들 중 가장 위(마지막) 모달만 반환
     modal_css = (
