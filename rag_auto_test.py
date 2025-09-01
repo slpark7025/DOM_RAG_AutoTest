@@ -30,9 +30,10 @@ def extract_keywords(text):
     words = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣_-]+', text)]
 
     # 대괄호 안 [ ... ] 내용도 추가 (예: [dropdown-more-btn])
-    bracket_hints = re.findall(r'\[([^\]]+)\]', text)
-    hints = [h.lower() for h in bracket_hints]
-    return words + hints
+    bracket_hints = [h.lower() for h in re.findall(r'\[([^\]]+)\]', text)]
+    paren_hints   = [h.lower() for h in re.findall(r'\(([^)]+)\)', text)]
+    # 기존 호환 위해 전체 키워드는 그대로 반환
+    return words + bracket_hints + paren_hints
 
 def build_selector_inventory(dom_docs):
     """context(dom_docs)에서 허용 가능한 ID 집합과 XPath 후보 풀을 만든다."""
@@ -274,6 +275,7 @@ def _inventory_for_paths(dom_docs, base_paths):
                 "placeholder": (m.get("placeholder") or ""),
                 "tag": tag,
                 "xpath_lower": xp.lower(),
+                "desc": (m.get("desc") or ""),
             })
     return allowed_ids, xpath_pool
 
@@ -295,6 +297,7 @@ def rewrite_selectors_per_step(
             tag = it.get("tag") or ""
             xp = it.get("xpath_lower") or ""
             idv = it.get("id") or ""
+            desc = (it.get("desc") or "").lower()
 
             s = 0
             # 기본 blob 매칭 (text, desc, tag, aria, placeholder 통합)
@@ -324,8 +327,7 @@ def rewrite_selectors_per_step(
 
             if s > best_score:
                 best, best_score = it, s
-
-    return best
+        return best
 
     # 단계별 블록 정규식: '# 10.' 헤더부터 다음 '# 11.' 전까지
     for idx, (txt, url) in enumerate(zip(step_texts, step_base_paths), start=1):
