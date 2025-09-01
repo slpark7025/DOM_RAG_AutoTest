@@ -179,16 +179,16 @@ def strip_document_prefix_xpaths(g: str) -> str:
         fixed = _fix(xp)
         return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
 
+    # ❗ 치명 버그 수정: 정의되지 않은 g를 참조하지 않고 입력 문자열을 단계적으로 갱신
+    text = g
     # (a) (By.XPATH, "…")  — EC, until 등 모든 튜플 인자
-    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-
+    text = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
     # (b) .find_element(By.XPATH, "…")
-    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    text = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
+    # (c) .find_elements(By.XPATH, "…")
+    text = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
 
-    # (c) .find_elements(By.XPATH, "…")  (있을 수도 있으니 케어)
-    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-
-    return g
+    return text
 
 def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=40, hard_cap_per_step=200):
     """
@@ -310,9 +310,9 @@ def rewrite_selectors_per_step(
             if any(k in idv.lower() for k in kw):
                 s += 5
 
-            # desc 전용 매칭
-            if any(k in desc for k in kw):
-                s += 4
+            # desc 전용 매칭 (❌ 미정의 변수 사용 제거; blob에 포함됨)
+            # if any(k in desc for k in kw):
+            #     s += 4
 
             # class/xpath 매칭 → 약한 가점
             if any(k in xp for k in kw):
@@ -324,8 +324,9 @@ def rewrite_selectors_per_step(
 
             if s > best_score:
                 best, best_score = it, s
+        return best
 
-    return best
+    # ❗ 조기 종료 버그 제거: 여기 있던 `return best` 삭제
 
     # 단계별 블록 정규식: '# 10.' 헤더부터 다음 '# 11.' 전까지
     for idx, (txt, url) in enumerate(zip(step_texts, step_base_paths), start=1):
