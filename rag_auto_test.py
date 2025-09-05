@@ -15,8 +15,7 @@ from langchain_core.runnables import RunnableMap
 from langchain_core.output_parsers import StrOutputParser
 
 from validate_selector_ids import validate_generated_code  # ID 정합성 검증 모듈
-
-
+from typing import Optional
 # ========================= 공통 유틸 =========================
 def derive_base_path(s: str) -> str:
     """전체 URL/상대경로 무엇이든 받아 /vpes/<section> 형태로 변환"""
@@ -28,87 +27,21 @@ def derive_base_path(s: str) -> str:
 def extract_keywords(text):
     # 포함일반 키워드 - 영문/숫자 + 한글까지
     words = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣_-]+', text)]
-
-    # 대괄호 안 [ ... ] 내용도 추가 (예: [dropdown-more-btn])
+    # 대괄호 안 [ ... ] 내용도 추가 (예: [dropdown-more-btn]
     bracket_hints = [h.lower() for h in re.findall(r'\[([^\]]+)\]', text)]
     paren_hints   = [h.lower() for h in re.findall(r'\(([^)]+)\)', text)]
-    # 기존 호환 위해 전체 키워드는 그대로 반환
+
     return words + bracket_hints + paren_hints
 
-def build_selector_inventory(dom_docs):
-    """context(dom_docs)에서 허용 가능한 ID 집합과 XPath 후보 풀을 만든다."""
-    allowed_ids = set()
-    xpath_pool = []
-    for d in dom_docs:
-        m = getattr(d, "metadata", {}) or {}
-        if not isinstance(m, dict):
-            continue
-        if m.get("id"):
-            allowed_ids.add(m["id"])
-        if m.get("xpath"):
-            blob = " ".join([
-                (m.get("text") or ""),
-                (m.get("desc") or ""),
-                (m.get("tag") or ""),
-                (m.get("aria-label") or ""),
-                (m.get("placeholder") or ""),
-            ]).lower()
-            xpath_pool.append({
-                "xpath": m["xpath"],
-                "blob": blob,
-                "url": (m.get("url") or ""),
-                "id": (m.get("id") or ""),  # 초기 선택에도 도움(가능하면 ID 우선)
-            })
-    return allowed_ids, xpath_pool
-
-def pick_best_xpath(xpath_pool, keywords, preferred_paths=()):
-    """키워드와 blob(text/desc/tag 조합)을 단순 매칭 + URL 가중치로 가장 관련도 높은 XPath 선택"""
-    best = None
-    best_score = -1
-    for item in xpath_pool:
-        score = sum(1 for kw in keywords if kw in item["blob"])
-        # ✅ 해당 단계 URL이면 가점(강화)
-        if any(p and p in (item.get("url") or "") for p in preferred_paths):
-            score += 8
-        if score > best_score:
-            best = item
-            best_score = score
-    return best["xpath"] if best else (xpath_pool[0]["xpath"] if xpath_pool else None)
-
 def enforce_known_selectors(generated_code: str, dom_docs, question: str, preferred_paths=()):
-    """허구 ID → XPath로 자동 대체(화이트리스트 기반). (간단 버전: ID 관련만 처리)"""
-    allowed_ids, xpath_pool = build_selector_inventory(dom_docs)
-    if not xpath_pool:
-        return generated_code
-    keywords = extract_keywords(question)
-
-    def best_xpath():
-        xp = pick_best_xpath(xpath_pool, keywords, preferred_paths=preferred_paths)
-        return xp or xpath_pool[0]["xpath"]
-
-    # 1) .find_element(By.ID, "…")
-    generated_code = re.sub(
-        r'(\.find_element\()\s*By\.ID\s*,\s*["\']([^"\']+)["\']\s*(\))',
-        lambda m: m.group(0) if m.group(2) in allowed_ids
-        else f'{m.group(1)}By.XPATH, "{best_xpath()}"{m.group(3)}',
-        generated_code
-    )
-
-    # 2) (By.ID, "…") — EC 패턴 포함 모든 곳
-    generated_code = re.sub(
-        r'\(\s*By\.ID\s*,\s*["\']([^"\']+)["\']\s*\)',
-        lambda m: m.group(0) if m.group(1) in allowed_ids
-        else f'(By.XPATH, "{best_xpath()}")',
-        generated_code
-    )
-
+    """ID는 절대 건드리지 않음"""
     return generated_code
 
 def remove_markdown(generated_code: str) -> str:
     return generated_code.replace("```python", "").replace("```", "").strip()
 
 def insert_sleep_before_assert(generated_code: str) -> str:
-    # 첫 assert/ self.assert/ pytest-style 'assert ' 앞에 sleep(2) 한 번만 삽입
+    # 첫 assert/ self.assert/ pytest-style 'assert ' 앞에 sleep(2) 한 번만 삽입 - flaky 방지 목적..
     pat = re.compile(r'^(\s*)(?:self\.)?assert', re.MULTILINE)
     m = pat.search(generated_code)
     if not m:
@@ -140,58 +73,47 @@ def patch_teardown(generated_code: str) -> str:
 def ensure_import(g: str, line: str) -> str:
     return (line + "\n" + g) if line not in g else g
 
+def strip_document_prefix_xpaths(g: str) -> str:
+    def _fix(xp: str) -> str:
+        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
+    def _repl_tuple(m):
+        quote = m.group(2); xp = m.group(3)
+        fixed = _fix(xp)
+        return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
+    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    return g
+
+# 저장된 dom xpath에 /[document]가 종종 섞여 나올 때, /[document] 프리픽스를 지워서 Selenium이 이해할 수 있는 형태로 변경
+def strip_document_prefix_xpaths(g: str) -> str:
+    def _fix(xp: str) -> str:
+        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
+    def _repl_tuple(m):
+        quote = m.group(2); xp = m.group(3)
+        fixed = _fix(xp)
+        return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
+    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
+    return g
+
 def postprocess_generated_code(generated_code: str) -> str:
-    """전체 후처리 통합(필수 최소만 유지)"""
     generated_code = remove_markdown(generated_code)
     generated_code = insert_sleep_before_assert(generated_code)
     generated_code = patch_teardown(generated_code)
     generated_code = patch_unittest_main(generated_code)
-
-    # 필수 import 보강(실제 생성 코드에서 자주 쓰는 것만)
     generated_code = ensure_import(generated_code, "import unittest")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.common.by import By")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.support.ui import WebDriverWait")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.support import expected_conditions as EC")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.common.keys import Keys")
     generated_code = ensure_import(generated_code, "import default_setting")
-
-    before = generated_code
     generated_code = strip_document_prefix_xpaths(generated_code)
-    if before != generated_code:
-        print("🔧 Stripped '/[document][n]/' prefix from XPaths.")
-
     return generated_code
 
 
-def strip_document_prefix_xpaths(g: str) -> str:
-    """
-    (By.XPATH, "...") 형태의 문자열 중
-    XPath가 '/[document]/' 또는 '/[document][숫자]/' 로 시작하면 그 프리픽스만 제거.
-    예) '/[document][1]/html[1]/body[1]/...' -> '/html[1]/body[1]/...'
-    """
-    # 1) 문자열 앞의 '/[document][n]/' 패턴만 없애는 헬퍼
-    def _fix(xp: str) -> str:
-        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
-
-    # 2) 공통 치환기: (By.XPATH, "...") 캡처해서 내부만 교체
-    def _repl_tuple(m):
-        quote = m.group(2)
-        xp = m.group(3)
-        fixed = _fix(xp)
-        return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
-
-    # (a) (By.XPATH, "…")  — EC, until 등 모든 튜플 인자
-    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-
-    # (b) .find_element(By.XPATH, "…")
-    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-
-    # (c) .find_elements(By.XPATH, "…")  (있을 수도 있으니 케어)
-    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-
-    return g
-
-def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=40, hard_cap_per_step=200):
+def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=60, hard_cap_per_step=200):
     """
     스텝별(base_path)로 컨텍스트 문서 수가 min_per_step 미만이면,
     각 DB의 'dom_elements' 컬렉션에서 메타데이터 url에 base_path가 포함된 문서를 직접 가져와 보충.
@@ -202,222 +124,270 @@ def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_p
     for d in dom_docs:
         m = getattr(d, "metadata", {}) or {}
         seen.add((m.get("url") or "", m.get("xpath") or "", m.get("id") or ""))
-
     def count_for(base):
         return sum(1 for d in dom_docs if base and base in (getattr(d, "metadata", {}) or {}).get("url", ""))
-
-    bases_in_order = [bp for bp in step_base_paths if bp]
-    # 입력 순서 보존 + 중복 제거
-    bases_in_order = list(dict.fromkeys(bases_in_order))
-
+    bases_in_order = list(dict.fromkeys([bp for bp in step_base_paths if bp]))
     for base in bases_in_order:
         if count_for(base) >= min_per_step:
             continue
-
         for db_dir in selected_dirs:
             try:
                 client = chromadb.PersistentClient(path=db_dir)
                 coll = client.get_collection(name="dom_elements")
                 raw = coll.get(include=["metadatas", "documents"], limit=100000)
-                mets = raw.get("metadatas", []) or []
-                docs = raw.get("documents", []) or []
-
-                added = 0
+                mets = raw.get("metadatas", []) or []; docs = raw.get("documents", []) or []
                 for meta, doc in zip(mets, docs):
-                    m = meta or {}
-                    u = m.get("url") or ""
-                    if base not in u:
-                        continue
-                    key = (u, m.get("xpath") or "", m.get("id") or "")
-                    if key in seen:
-                        continue
+                    u = (meta or {}).get("url") or ""
+                    if base not in u: continue
+                    key = (u, meta.get("xpath") or "", meta.get("id") or "")
+                    if key in seen: continue
                     seen.add(key)
-                    dom_docs.append(type("Doc", (object,), {"metadata": m, "page_content": doc}))
-                    added += 1
-                    if count_for(base) >= hard_cap_per_step:
-                        break
-
-                if count_for(base) >= min_per_step:
-                    break  # 다음 base로
+                    dom_docs.append(type("Doc", (object,), {"metadata": meta, "page_content": doc}))
+                    if count_for(base) >= hard_cap_per_step: break
+                if count_for(base) >= min_per_step: break
             except Exception as e:
                 print(f"[백필 경고] {db_dir} 접근 실패: {e}")
-
     return dom_docs
 
+# ====== 대괄호 힌트 기반 보정 함수 ======
+def convert_bracket_hints_to_exact_selectors(generated_code: str, dom_docs, question: str) -> str:
+    """
+    단계 텍스트에 [힌트]가 있을 때만, 해당 단계의 URL 스코프 내에서
+    힌트와 매칭되는 ID 또는 XPATH를 찾아 (By.XPATH, "...hint...") 패턴을
+    (By.ID, "id") 또는 (By.XPATH, "절대경로")로 교체.
+    * 단, By.ID로 이미 지정된 선택자는 건드리지 않음.
+    """
+    bracket_hints = re.findall(r'\[([^\]]+)\]', question)
+    if not bracket_hints:
+        return generated_code
+
+    step_lines = question.split('\n')
+    hint_to_selector = {}
+
+    for step_line in step_lines:
+        step_hints = re.findall(r'\[([^\]]+)\]', step_line)
+        if not step_hints:
+            continue
+
+        url_match = re.search(r'((?:https?://[^\s,)\]　]+)|(?:/vpes/[^\s,)\]　]+))', step_line, re.IGNORECASE)
+        step_base_path = None
+        if url_match:
+            url = url_match.group(1).strip()
+            step_base_path = derive_base_path(url)
+
+        if step_base_path:
+            scoped_docs = [doc for doc in dom_docs if step_base_path in ((getattr(doc, "metadata", {}) or {}).get("url") or "")]
+        else:
+            scoped_docs = dom_docs
+
+        for hint in step_hints:
+            hint_lower = hint.lower()
+            best_match = None
+            # 태그 힌트 우선
+            if hint_lower in ['span', 'div', 'button', 'input', 'a', 'li', 'p', 'h1', 'h2', 'h3']:
+                for doc in scoped_docs:
+                    meta = getattr(doc, "metadata", {}) or {}
+                    if (meta.get("tag") or "").lower() == hint_lower:
+                        if meta.get("id"):
+                            best_match = ("ID", meta["id"]); break
+                        elif meta.get("xpath"):
+                            best_match = ("XPATH", meta["xpath"]); break
+            # desc/class/xpath 포함 매칭
+            if not best_match:
+                for doc in scoped_docs:
+                    meta = getattr(doc, "metadata", {}) or {}
+                    desc = (meta.get("desc") or "").lower()
+                    if (hint_lower in desc
+                        or hint_lower in (meta.get("class") or "").lower()
+                        or hint_lower in (meta.get("xpath") or "").lower()):
+                        if meta.get("id"):
+                            best_match = ("ID", meta["id"]); break
+                        elif meta.get("xpath"):
+                            best_match = ("XPATH", meta["xpath"]); break
+            if best_match:
+                hint_to_selector[hint_lower] = best_match
+
+    # By.ID는 손대지 않고, XPATH 중 힌트 포함 패턴만 더 구체적으로 바꿈
+    for hint_lower, (selector_type, selector_value) in hint_to_selector.items():
+        if selector_type == "ID":
+            patterns = [
+                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*contains\([^)]*[\'"][^"\']*{re.escape(hint_lower)}[^"\']*[\'"][^)]*\)[^"\']*["\']\s*\)',
+                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*{re.escape(hint_lower)}[^"\']*["\']\s*\)',
+            ]
+            replacement = f'(By.ID, "{selector_value}")'
+        else:  # XPATH
+            patterns = [
+                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*contains\([^)]*[\'"][^"\']*{re.escape(hint_lower)}[^"\']*[\'"][^)]*\)[^"\']*["\']\s*\)',
+                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*{re.escape(hint_lower)}[^"\']*["\']\s*\)',
+            ]
+            replacement = f'(By.XPATH, "{selector_value}")'
+
+        for pattern in patterns:
+            if re.search(pattern, generated_code, flags=re.IGNORECASE):
+                generated_code = re.sub(pattern, replacement, generated_code, flags=re.IGNORECASE)
+                break
+
+    return generated_code
+
 # ========================= 단계별(URL 스코프) 셀렉터 리라이트 =========================
+# 해당 URL 스코프(base_paths)에 들어맞는 DOM들을 골라서 데이터 준비해줌
 def _inventory_for_paths(dom_docs, base_paths):
-    """주어진 base_paths에 속한 DOM만 모아 allowed_ids / xpath_pool 생성"""
-    allowed_ids = set()
-    xpath_pool = []
+    allowed_ids = set(); xpath_pool = []
     for d in dom_docs:
         m = getattr(d, "metadata", {}) or {}
         u = (m.get("url") or "")
         tag = (m.get("tag") or "").lower()
         xp = (m.get("xpath") or "")
-        if base_paths and not any(p and p in u for p in base_paths):
-            continue
-        if m.get("id"):
-            allowed_ids.add(m["id"])
+        if base_paths and not any(p and p in u for p in base_paths): continue
+        if m.get("id"): allowed_ids.add(m["id"])
         if m.get("xpath"):
-            blob = " ".join([
-                (m.get("text") or ""),
-                (m.get("desc") or ""),
-                (m.get("tag") or ""),
-                (m.get("aria-label") or ""),
-                (m.get("placeholder") or ""),
-            ]).lower()
+            blob = " ".join([(m.get("text") or ""), (m.get("desc") or ""), (m.get("tag") or ""),
+                             (m.get("aria-label") or ""), (m.get("placeholder") or "")]).lower()
             xpath_pool.append({
-                "xpath": m["xpath"],
-                "id": (m.get("id") or ""),
-                "url": u,
-                "blob": blob,
-                "aria": (m.get("aria-label") or ""),
-                "placeholder": (m.get("placeholder") or ""),
-                "tag": tag,
-                "xpath_lower": xp.lower(),
-                "desc": (m.get("desc") or ""),
+                "xpath": m["xpath"], "id": (m.get("id") or ""), "url": u, "blob": blob,
+                "aria": (m.get("aria-label") or ""), "placeholder": (m.get("placeholder") or ""),
+                "tag": tag, "xpath_lower": xp.lower(), "desc": (m.get("desc") or ""),
             })
     return allowed_ids, xpath_pool
 
-def rewrite_selectors_per_step(
-    generated_code: str,
-    dom_docs,
-    step_texts: list[str],   # URL 제거된 단계 텍스트 (clean_steps)
-    step_base_paths: list[str],
-):
-    """
-    생성된 코드의 '# n.' 주석 블록을 단계별로 잘라,
-    해당 단계의 URL 스코프 DOM만 보고 셀렉터를 보정한다.
-    """
-    def _best_item(pool, kw):
-        # 키워드 점수 + aria/placeholder 포함 가점
-        best, best_score = None, -1
-        for it in pool:
-            b = it["blob"] or ""
-            tag = it.get("tag") or ""
-            xp = it.get("xpath_lower") or ""
-            idv = it.get("id") or ""
-            desc = (it.get("desc") or "").lower()
+#실제 코드 리라이트 엔진
+# 스텝 블록 찾아서 위에서 만든 후보(xpath_pool) + 키워드 + 앵커-직전에 클릭한 요소(있으면)와 가까운 것에 가산점 줘서 가장 적합한 절대 xpath를 고른 후 실제 코드 치환
+# (위쪽 동일) ...
 
-            s = 0
-            # 기본 blob 매칭 (text, desc, tag, aria, placeholder 통합)
-            s += sum(1 for k in kw if k in b)
 
-            # aria / placeholder 매칭 → 약한 가점
-            if any(k in (it.get("aria") or "").lower() for k in kw):
-                s += 2
-            if any(k in (it.get("placeholder") or "").lower() for k in kw):
-                s += 2
 
-            # id 매칭 → 강한 가점
-            if any(k in idv.lower() for k in kw):
-                s += 5
+def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_base_paths):
+    import re
 
-            # desc 전용 매칭
-            if any(k in desc for k in kw):
-                s += 4
+    def _strip_doc_prefix(xp: str) -> str:
+        # '/[document][n]/' 프리픽스만 제거
+        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp or '')
 
-            # class/xpath 매칭 → 약한 가점
-            if any(k in xp for k in kw):
-                s += 1
+    def _lcp_len(a: str, b: str) -> int:
+        a, b = (a or '').replace(' ', ''), (b or '').replace(' ', '')
+        n = min(len(a), len(b)); i = 0
+        while i < n and a[i] == b[i]:
+            i += 1
+        return i
 
-            # 태그 힌트 ([button], [span] 등) 매칭 → 강한 가점
-            if any(k == tag for k in kw):
-                s += 10
+    def _modal_prefix(xp: str) -> str | None:
+        # /html[1]/body[1]/div[13]/div[1] 정도까지를 모달 루트 근사치로 사용
+        s = (xp or '').replace(' ', '')
+        m = re.match(r'^(/\s*html\[\d+\]/\s*body\[\d+\]/\s*div\[\d+\]/\s*div\[\d+\])', s)
+        return m.group(1) if m else None
 
-            if s > best_score:
-                best, best_score = it, s
-        return best
+    def _xpath_for_id(base, el_id):
+        # 같은 base(URL) 범위에서 해당 ID의 절대 XPath 반환
+        for d in dom_docs:
+            m = getattr(d, "metadata", {}) or {}
+            if base and base not in (m.get("url") or ""):
+                continue
+            if (m.get("id") or "") == el_id:
+                return _strip_doc_prefix(m.get("xpath") or "")
+        return None
 
-    # 단계별 블록 정규식: '# 10.' 헤더부터 다음 '# 11.' 전까지
+    def _candidate_pool(base, modal_pref=None):
+        # 같은 base(URL) 안의 모든 요소(태그 구분 X)를 후보로 두되,
+        # modal_pref가 있으면 그 prefix로 시작하는 애들만 남긴다.
+        pool = []
+        for d in dom_docs:
+            m = getattr(d, "metadata", {}) or {}
+            if base and base not in (m.get("url") or ""):
+                continue
+            xp = _strip_doc_prefix(m.get("xpath") or "")
+            if not xp:
+                continue
+            if modal_pref:
+                if not xp.replace(' ', '').startswith(modal_pref.replace(' ', '')):
+                    continue
+            # 텍스트/설명/클래스 기반 매칭용 blob
+            blob = " ".join([
+                (m.get("text") or ""), (m.get("desc") or ""), (m.get("class") or "")
+            ]).lower()
+            pool.append({
+                "xpath": xp,
+                "blob": blob,
+                "tag": (m.get("tag") or "").lower(),
+            })
+        return pool
+
+    # 클릭용 XPATH 인자만 교체 (By.ID는 절대 안 바꿈)
+    ec_xpath_pat = re.compile(
+        r'(element_to_be_clickable\(\(\s*By\.XPATH\s*,\s*)(["\'])(/[^"\']+)\2(\s*\)\))'
+    )
+
     for idx, (txt, url) in enumerate(zip(step_texts, step_base_paths), start=1):
         base = derive_base_path(url) if url else None
         if not base:
             continue
 
-        # 해당 단계 블록을 찾는다
+        # '# n.' 블록 추출
         pat = re.compile(rf'(^\s*#\s*{idx}\.\s.*?$)([\s\S]*?)(?=^\s*#\s*\d+\.\s|\Z)', re.MULTILINE)
         m = pat.search(generated_code)
         if not m:
             continue
-
         header, body = m.group(1), m.group(2)
-        keywords = extract_keywords(txt)
 
-        # 이 단계 URL 스코프 DOM 인벤토리
-        allowed_ids, pool = _inventory_for_paths(dom_docs, [base])
+        # 스텝 자연어에서 키워드(저장/닫기/버튼 등)를 자동 추출
+        # → 하드코딩 리스트 없이 extract_keywords 사용
+        step_kw = set(extract_keywords(txt))  # 이미 존재하는 유틸
 
-        # 1) 허구 ID → XPATH 치환 (스코프 한정)
-        def _best_xpath():
-            if not pool:
-                return None
-            cand = _best_item(pool, keywords)
-            return cand["xpath"] if cand else pool[0]["xpath"]
+        # 같은 스텝 내 첫 앵커: By.ID 사용 요소의 절대 XPATH (예: aiUnUse)
+        ids_used = re.findall(r'By\.ID\s*,\s*["\']([^"\']+)["\']', body)
+        anchor_xp = None
+        for el_id in ids_used:
+            anchor_xp = _xpath_for_id(base, el_id)
+            if anchor_xp:
+                break
 
-        body = re.sub(
-            r'(\.find_element\()\s*By\.ID\s*,\s*["\']([^"\']+)["\']\s*(\))',
-            lambda mm: mm.group(0) if mm.group(2) in allowed_ids
-            else f'{mm.group(1)}By.XPATH, "{_best_xpath() or pool[0]["xpath"]}"{mm.group(3)}',
-            body
-        )
-        body = re.sub(
-            r'\(\s*By\.ID\s*,\s*["\']([^"\']+)["\']\s*\)',
-            lambda mm: mm.group(0) if mm.group(1) in allowed_ids
-            else f'(By.XPATH, "{_best_xpath() or pool[0]["xpath"]}")',
-            body
-        )
+        last_chosen_xp = None  # 같은 스텝에서 바로 직전에 선택된 XPATH (체인용)
 
-        # 2) 범용 input 찾기 코드 → 이 단계 스코프에서 가장 알맞은 input으로 교체
-        input_pool = [
-            it for it in pool
-            if (
-                    it.get("tag") == "input"
-                    or "/input" in (it.get("xpath_lower") or "")
-                    or it.get("placeholder")  # placeholder가 있으면 보통 입력칸
-                    or it.get("aria")  # aria-label만 있는 입력도 존재
-            )
-        ]
-        best_input = None
-        if input_pool:
-            input_pool.sort(key=lambda it: (0 if it.get("id") else 1, len(it.get("xpath") or "")))
-            best_input = input_pool[0]
-            # (b) find_element(By.XPATH, "//input...") 류 교체
-            body = re.sub(
-                r'((?:find_element|find_elements)\(\s*)By\.XPATH\s*,\s*(["\'])(?:(?!\2).)*//input(?:(?!\2).)*\2',
-                (lambda mm: f'{mm.group(1)}By.ID, "{best_input["id"]}"' if best_input["id"]
-                 else f'{mm.group(1)}By.XPATH, "{best_input["xpath"]}"'),
-                body
-            )
+        # 본문 안의 클릭 대상을 순서대로 치환
+        new_body, last = [], 0
+        for mm in ec_xpath_pat.finditer(body):
+            start, end = mm.span()
+            new_body.append(body[last:start])
 
-            # (c) "첫 번째 input에 쓴다" 같은 패턴 교체(있는 경우)
-            generic_first_input = re.compile(
-                r'inputs\s*=\s*driver\.find_elements\([^\)]*\)\)[\s\S]*?send_keys\(u?\'?\\?ue007\'?\)\s*#?\s*ENTER',
-                re.MULTILINE
-            )
-            if generic_first_input.search(body):
-                fixed = []
-                if best_input["id"]:
-                    fixed.append(f'elem = wait.until(EC.element_to_be_clickable((By.ID, "{best_input["id"]}")))')
-                else:
-                    fixed.append(f'elem = wait.until(EC.element_to_be_clickable((By.XPATH, "{best_input["xpath"]}")))')
-                fixed.append('try:\n    elem.clear()\nexcept Exception:\n    pass')
-                fixed.append('elem.send_keys(case_id)\nelem.send_keys(Keys.ENTER)')
-                body = generic_first_input.sub("\n".join(fixed), body)
+            # 현재 앵커 기준으로 modal prefix 계산
+            modal_pref = _modal_prefix(anchor_xp) if anchor_xp else None
+            pool = _candidate_pool(base, modal_pref)
 
-        # 3) 절대 XPath 튜플 인자도 이 단계 스코프에 맞춰 교체
-        best_xp = _best_xpath()
-        if best_xp:
-            body = re.sub(
-                r'(\(\s*By\.XPATH\s*,\s*)(["\'])(/\s*(?:\[document\](?:\[\d+\])?/)?html(?:(?!\2)[\s\S])*)\2(\s*\))',
-                lambda mm: f'{mm.group(1)}"{best_xp}"{mm.group(4)}',
-                body
-            )
+            # 점수 함수: 자연어 키워드 매칭 + 앵커 근접(LCP) + 같은 XPATH 재사용 페널티
+            best_xp, best_score = None, -10**9
+            for it in pool:
+                s = 0
+                # 자연어 키워드(저장/닫기/버튼 등)와 blob(text/desc/class) 매칭
+                if step_kw:
+                    s += sum(1 for k in step_kw if k in it["blob"])
 
-        # 블록 치환 반영
+                # 앵커와의 공통 접두 길이(모달/근접도)
+                if anchor_xp:
+                    s += min(60, _lcp_len(anchor_xp, it["xpath"]) // 3)
+
+                # 같은 스텝에서 바로 직전과 동일한 XPATH는 약한 페널티(두 번 연속 같은 버튼 선택 방지)
+                if last_chosen_xp and it["xpath"].replace(' ', '') == last_chosen_xp.replace(' ', ''):
+                    s -= 8
+
+                if s > best_score:
+                    best_xp, best_score = it["xpath"], s
+
+            # 최종 치환(없으면 원본 유지)
+            if best_xp:
+                new_body.append(mm.group(1) + '"' + best_xp + '"' + mm.group(4))
+                # 다음 클릭을 위해 앵커/직전 선택 갱신 (체인)
+                anchor_xp = best_xp
+                last_chosen_xp = best_xp
+            else:
+                new_body.append(body[start:end])
+
+            last = end
+
+        new_body.append(body[last:])
+        body = ''.join(new_body)
+
         generated_code = generated_code[:m.start()] + header + body + generated_code[m.end():]
 
     return generated_code
-
 
 
 # ========================= URL 기반 컨텍스트 전처리(핵심) =========================
@@ -425,33 +395,28 @@ def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
     """입력한 URL/베이스경로에 해당하는 문서만 남기고, 경로 순서대로 앞으로 정렬."""
     if not preferred_paths:
         return dom_docs
-
     def belongs(url: str) -> bool:
         return any(p and p in url for p in preferred_paths)
-
     kept, others = [], []
     for d in dom_docs:
         m = getattr(d, "metadata", {}) or {}
         u = (m.get("url") or "")
         (kept if belongs(u) else others).append(d)
-
     if not kept:
         return dom_docs  # 매칭 없으면 안전하게 원본 유지
-
     def ord_key(d):
         u = (getattr(d, "metadata", {}) or {}).get("url", "")
         for i, p in enumerate(preferred_paths):
             if p and p in u:
                 return i
         return len(preferred_paths) + 1
-
     kept.sort(key=ord_key)
     return kept
 
 def docs_for_base(dom_docs, base_path: str):
     """특정 단계의 base_path에 해당하는 문서만 반환(없으면 빈 목록)."""
     if not base_path:
-        return []  # ✅ URL 없는 단계는 DOM 제공 안 함
+        return []
     picked = []
     for d in dom_docs:
         m = getattr(d, "metadata", {}) or {}
@@ -459,7 +424,6 @@ def docs_for_base(dom_docs, base_path: str):
         if base_path in u:
             picked.append(d)
     return picked
-
 
 # ========================= 단계 텍스트에서 URL 추출 =========================
 def parse_step_urls(lines):
@@ -472,11 +436,7 @@ def parse_step_urls(lines):
       - url_tags_for_prompt: 각 단계 뒤에 붙일 '@URL:/vpes/...' 태그 리스트
     """
     url_pat = re.compile(r'((?:https?://[^\s,)\]　]+)|(?:/vpes/[^\s,)\]　]+))', re.IGNORECASE)
-
-    clean_steps = []
-    step_base_paths = []
-    url_tags = []
-
+    clean_steps = []; step_base_paths = []; url_tags = []
     for s_raw in lines:
         m = url_pat.search(s_raw)
         if m:
@@ -488,20 +448,15 @@ def parse_step_urls(lines):
             url_tags.append(f' @URL:{bp}')
         else:
             clean_steps.append(s_raw.strip())
-            step_base_paths.append(None)   # ✅ 직전 URL 계승하지 않음
+            step_base_paths.append(None)
             url_tags.append('')
-
     return clean_steps, step_base_paths, url_tags
-
 
 # ========================= 선택 DB 라우팅 & 검색 =========================
 CHROMA_BASE_DIR = "./chroma"  # JSON별 DB 폴더들이 위치한 루트
+USE_BACKFILL = False  # 필요할 때만 True로 전환 -> 특정 스텝 DOM이 빠진다! 싶을때만 켜기!
 
 def select_chroma_dirs(base_dir: str, user_inputs: list[str]) -> list[str]:
-    """
-    ./chroma 하위 폴더 중에서, 폴더명에 사용자가 입력한 텍스트(쉼표 분리 원본)가
-    '부분 문자열'로 포함된 폴더만 선택 (대소문자 무시).
-    """
     if not os.path.isdir(base_dir):
         return []
     keys = [u.strip().lower() for u in user_inputs if u and u.strip()]
@@ -518,12 +473,12 @@ def select_chroma_dirs(base_dir: str, user_inputs: list[str]) -> list[str]:
     return selected
 
 def retrieve_from_selected_dirs(
-    selected_dirs: list[str],
-    query: str,
-    embedding,              # OpenAIEmbeddings 인스턴스
-    k_total: int = 200,     # 전체 상한(필요시 100~400 조정)
-    mmr_fetch_factor: int = 5,
-    mmr_lambda: float = 0.35
+        selected_dirs: list[str],
+        query: str,
+        embedding,
+        k_total: int = 200,
+        mmr_fetch_factor: int = 5,
+        mmr_lambda: float = 0.35
 ):
     """
     선택된 여러 DB 폴더 각각에서 MMR 검색을 수행하고 결과를 합칩니다.
@@ -533,7 +488,6 @@ def retrieve_from_selected_dirs(
         return []
     per_db = max(1, math.ceil(k_total / len(selected_dirs)))
     fetch_k = min(per_db * mmr_fetch_factor, 1000)
-
     all_docs = []
     for db_dir in selected_dirs:
         try:
@@ -554,22 +508,17 @@ def retrieve_from_selected_dirs(
             print(f"[경고] DB 접근 실패, 건너뜀: {db_dir} ({e})")
     return all_docs[:k_total]
 
-
 # --- URL별 독립 검색 상한 ---
-K_PER_BASE = 300  # URL 하나당 최대 몇 개까지 뽑을지 (원하면 200~400 사이로 조절)
+K_PER_BASE = 200  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
 
 def retrieve_dom_docs_per_base(
     base_paths: list[str],
     clean_steps: list[str],
     step_base_paths: list[str],
     embedding,
+    selected_dirs: list[str],
 ):
-    """
-    각 base_path(예: /vpes/ProjectModify)마다 그 base를 참조하는 스텝들만 모아
-    그 URL에 해당하는 DB들만 대상으로 독립적으로 MMR 검색을 수행하고 결과를 합쳐 반환.
-    """
     from collections import defaultdict
-
     all_docs = []
     # base_path -> 해당 URL을 참조하는 스텝 텍스트만 모은 쿼리
     steps_by_base = defaultdict(list)
@@ -581,18 +530,12 @@ def retrieve_dom_docs_per_base(
     for bp in base_paths:
         if not bp:
             continue
-
-        # (1) 이 base에 대응하는 디렉터리만 선택
-        keys = [bp, os.path.basename(bp)]
-        dirs_for_bp = select_chroma_dirs(CHROMA_BASE_DIR, keys)
+        dirs_for_bp = selected_dirs[:]
         if not dirs_for_bp:
-            # 해당되는 DB가 없으면 스킵(원하면 fallback 로직 추가 가능)
             continue
-
-        # (2) 이 base가 참조된 스텝만 쿼리로 구성 (없으면 bp 자체를 쿼리로)
+        key_fragment = os.path.basename(bp).lower()
+        dirs_for_bp = [d for d in dirs_for_bp if key_fragment in os.path.basename(d).lower()]
         query_for_bp = "\n".join(steps_by_base.get(bp, [])) or bp
-
-        # (3) 이 base 전용 검색
         docs_bp = retrieve_from_selected_dirs(
             selected_dirs=dirs_for_bp,
             query=query_for_bp,
@@ -602,9 +545,7 @@ def retrieve_dom_docs_per_base(
             mmr_lambda=0.35,
         )
         all_docs.extend(docs_bp)
-
     return all_docs
-
 
 # ========================= 메인 로직 =========================
 def main():
@@ -640,7 +581,6 @@ def main():
      - 태그가 없으면 DOM context를 사용하지 말고 function_context 함수만 사용.
   3) 함수 재사용 매핑 → function_context를 스캔해 동일/유사 기능 우선 매핑.
   4) DOM 매핑 → context의 text/description/aria/placeholder와 의미적으로 정합되게 선택.
-     - **선택자 우선순위: ID > CSS > XPath** (context에 제공된 값만 사용).
   5) 중복 이동 제거: login 후 /vpes 재이동 금지 등.
   6) 코드 설계: unittest.TestCase 골격 → setUp → TC 메서드 → tearDown → main 순서.
   7) 주석 규칙: 각 주요 단계에 “숫자. 한 줄 요약”만.
@@ -664,15 +604,26 @@ def main():
 - driver.get()이 포함된 함수는 중복 호출 피하기.
 - 제공된 함수가 시나리오와 의미가 같다면 반드시 재사용.
 
-# [셀렉터 규칙]  ID > CLASS/CSS > XPath
-- 단계 텍스트에 괄호로 태그가 명시되면(예: (div)/(span)/(input)/(button)), 해당 태그(또는 괄호 안에 CSS 표기가 있으면 그 CSS)를 최우선으로 선택한다. (우선순위: TagHint/CSSHilt > ID > CSS > XPath)
+# [추가 규칙 — 앵커(직전 클릭 요소) 근접도]
+- 앵커: 직전에 클릭/체크한 요소의 XPath(또는 ID→context의 XPath).
+- 저장/닫기/확인/적용 같은 버튼을 고를 땐, 같은 @URL 컨텍스트에서 후보를 모으고 아래 우선순위로 선택:
+  1) 앵커 XPath와의 공통 prefix 깊이가 가장 큰 것(= 같은 모달 트리 우선).
+  2) modal/footer 관련 class( modal, modal-footer, btn-primary/btn-outline-primary )가 있는 후보 가점.
+  3) 동일 부모 div 아래 ‘닫기’와 ‘저장’이 쌍으로 있는 세트 우선.
+  4) 동률이면 더 짧은 XPath.
+- By.ID로 이미 고른 로케이터는 절대 바꾸지 말 것. //body 폴백 금지. 새 ID/클래스/XPath 생성 금지.
+
+# [셀렉터 규칙]  
+- 기본 우선순위:
+  1. ID가 있으면 → 반드시 By.ID 사용
+  2. ID가 없고 class가 있으면 → By.CLASS_NAME 또는 By.CSS_SELECTOR 사용
+  3. 둘 다 없으면 → context의 XPath 사용
+- 단, 단계 텍스트에 **대괄호 힌트([…])가 있는 경우에만**, 그 힌트와 일치하는 요소를 최우선으로 선택한다.
+  - 이때도 가능한 경우 ID를 먼저 쓰고, ID가 없으면 XPath를 사용한다.
 
 # [URL 기준 DOM 선택]
 - 시나리오 단계의 @URL을 기준으로 context를 필터링하여 셀렉터 선택.
-- 상대경로 "/vpes/xxx"는 아래식으로 Full URL 구성:
-  target_url = "/vpes/xxx"
-  page_url = "http://localhost:38080" + target_url
-  driver.get(page_url)
+- 이동 시나리오가 존재하는 경우에는 function_context 의 move_menu 관련 dom 참고.
 
 # [ASSERT 규칙]
 - page_source 금지. 요소 상태/속성/URL/토스트 등으로 검증.
@@ -689,12 +640,8 @@ def main():
 {question}
 ---
 
-# [URL 기준 DOM 선택]eksrP
+# [URL 기준 DOM 선택]
 - 시나리오 단계의 @URL을 기준으로 context를 필터링하여 셀렉터 선택.
-- 상대경로 "/vpes/xxx"는 아래식으로 Full URL 구성:
-  target_url = "/vpes/xxx"
-  page_url = "http://localhost:38080" + target_url
-  driver.get(page_url)
 - ✅ @URL이 없는 단계에서는 DOM context를 사용하지 말고, function_context의 함수만 사용(이동/유틸 호출). 셀렉터 생성 금지.
 
 # [최종 출력 규칙]
@@ -737,7 +684,6 @@ def main():
         inputs = [u.strip() for u in raw_urls.split(",") if u.strip()]
         inputs = [derive_base_path(u) for u in inputs]
 
-    # /vpes/<section> 형태의 base_paths
     base_paths = list(dict.fromkeys(inputs))
     print("\n🌐 입력/추출된 URL(base) 목록:")
     for u in base_paths:
@@ -746,7 +692,6 @@ def main():
     # 7) 선택된 DB 폴더만 대상으로 Retrieval
     match_keys = base_paths + [os.path.basename(p) for p in base_paths]
     selected_dirs = select_chroma_dirs(CHROMA_BASE_DIR, match_keys)
-
     if not selected_dirs:
         print(f"[경고] 입력 텍스트와 일치하는 DB 폴더가 없습니다. 전체 DB 대상으로 검색합니다.")
         selected_dirs = [
@@ -757,26 +702,35 @@ def main():
         if not selected_dirs:
             raise RuntimeError(f"검색 가능한 DB 폴더가 없습니다: {CHROMA_BASE_DIR}")
 
-    print("\n🔎 검색에 사용할 DB 폴더:")
+    print("\n🔎 자동 매칭된 DB 폴더:")
     for d in selected_dirs:
         print(" -", d)
-    '''
-    # 우선 전체를 한 번 검색 (시나리오 전체를 쿼리로)
-    dom_docs_lc = retrieve_from_selected_dirs(
-        selected_dirs=selected_dirs,
-        query=query,
-        embedding=embedding,
-        k_total=200,           # 필요 시 100~400로 조정
-        mmr_fetch_factor=5,
-        mmr_lambda=0.35
-    )
-    '''
+
+    # ✅ 사용자가 원하는 폴더만 입력 (쉼표 구분)
+    raw_selected = input("\n👉 실제 사용할 DB 폴더만 골라 붙여넣으세요 (쉼표 구분, 없으면 자동 선택 사용): ").strip()
+
+    if raw_selected:
+        selected_dirs = [
+            os.path.normpath(s.strip().strip('"').strip("'"))
+            for s in raw_selected.split(",") if s.strip()
+        ]
+        selected_dirs = [
+            s if os.path.isabs(s) else os.path.normpath(
+                os.path.join(CHROMA_BASE_DIR, os.path.basename(s)) if not s.startswith(
+                    "." + os.sep) else os.path.normpath(os.path.join(".", s)))
+            for s in selected_dirs
+        ]
+        selected_dirs = [s for s in selected_dirs if os.path.isdir(s)]
+    else:
+        selected_dirs = auto_dirs
+
     # URL별로 완전 분리해서 독립 검색 (URL마다 K_PER_BASE개까지)
     dom_docs_lc = retrieve_dom_docs_per_base(
         base_paths=base_paths,
         clean_steps=clean_steps,
         step_base_paths=step_base_paths,
         embedding=embedding,
+        selected_dirs=selected_dirs,
     )
 
     # LangChain Document → 간단 객체로 변환
@@ -797,8 +751,11 @@ def main():
     dom_docs = dedup
 
     # URL별로 최소 문서수 보장
-    dom_docs = backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=60,
-                                            hard_cap_per_step=200)
+    if USE_BACKFILL:
+        dom_docs = backfill_step_docs_if_needed(
+            dom_docs, selected_dirs, embedding, step_base_paths,
+            min_per_step=60, hard_cap_per_step=200
+        )
 
     # 8) function_context 로드 (있을 때만)
     def safe_load_collection(persist_dir: str, collection_name: str):
@@ -823,14 +780,12 @@ def main():
         docs_n = len(docs_for_base(dom_docs, bp))
         print(f" - STEP {i:02d}: base_path={bp or '-'} dom_count={docs_n}")
 
-
-    #디버그 (최종에선 제외 예정)
+    # 디버그
     ids = [(getattr(d, "metadata", {}) or {}).get("id")
            for d in docs_for_base(dom_docs, "/vpes/ProjectModify")]
     print("in?", "projectBtn" in ids) #특정 id가 포함되었는지 확인 시
 
-
-    # 9) context 구성 (단계별 URL 스코프로 쪼개서 제공)
+    # 9) context 구성
     def _fmt(meta, key, maxlen=180):
         v = (meta.get(key) or "")
         sv = str(v)
@@ -838,18 +793,82 @@ def main():
 
     BASE_URL_CONST = "http://localhost:38080"  # 클로저 캡쳐 안정화
 
-
-
     sections = []
     for i, (txt, bp) in enumerate(zip(clean_steps, step_base_paths), start=1):
         step_docs = docs_for_base(dom_docs, bp)
+
+        # 대괄호 힌트가 있는 경우 우선 배치
+        bracket_hints = re.findall(r'\[([^\]]+)\]', txt)
+        if bracket_hints:
+            print(f"🎯 STEP {i}에서 대괄호 힌트 발견: {bracket_hints}")
+
+            filtered_docs = step_docs[:]
+            step_keywords = extract_keywords(txt)
+
+            best_score = 0
+            best_docs = step_docs
+
+            source_files = set()
+            for doc in step_docs:
+                meta = getattr(doc, "metadata", {}) or {}
+                sf = meta.get("source_file", "")
+                if sf: source_files.add(sf)
+
+            for source_file in source_files:
+                score = 0
+                source_lower = source_file.lower()
+                txt_lower = txt.lower()
+                for keyword in step_keywords:
+                    if keyword in source_lower:
+                        score += 3
+                if "모달" in txt_lower or "창" in txt_lower:
+                    if "modal" in source_lower or "popup" in source_lower:
+                        score += 2
+                if "dropdown" in txt_lower or "더보기" in txt_lower:
+                    if "dropdown" in source_lower or "kebab" in source_lower:
+                        score += 2
+                if "선택" in txt_lower or "select" in txt_lower:
+                    if "select" in source_lower or "choice" in source_lower:
+                        score += 2
+                if score > best_score:
+                    candidate_docs = [doc for doc in step_docs
+                                      if (getattr(doc, "metadata", {}) or {}).get("source_file", "") == source_file]
+                    if candidate_docs:
+                        best_score = score
+                        best_docs = candidate_docs
+                        print(f"   🎯 Context 최적 매칭: {source_file} (점수: {score}, DOM: {len(candidate_docs)}개)")
+
+            filtered_docs = best_docs
+
+            prioritized_docs = []
+            remaining_docs = []
+            for doc in (filtered_docs if filtered_docs else step_docs):
+                meta = getattr(doc, 'metadata', {})
+                desc = (meta.get("desc") or "").lower()
+                tag = (meta.get("tag") or "").lower()
+                matched = False
+                for hint in bracket_hints:
+                    hint_lower = hint.lower()
+                    if ((hint_lower in ['span', 'div', 'button', 'input', 'a', 'li'] and tag == hint_lower) or
+                            (hint_lower in desc) or
+                            (hint_lower in (meta.get("class") or "").lower()) or
+                            (hint_lower in (meta.get("xpath") or "").lower())):
+                        prioritized_docs.append(doc)
+                        matched = True
+                        print(f"   ✅ 힌트 '{hint}'와 매칭: {meta.get('xpath', 'N/A')}")
+                        print(f"      매칭 상세 - desc: '{desc[:30]}...', xpath: '{(meta.get('xpath') or '')[:50]}...'")
+                        break
+                if not matched:
+                    remaining_docs.append(doc)
+            step_docs = prioritized_docs + remaining_docs
+
         frag = "\n".join([
             f"FullURL:{urljoin(BASE_URL_CONST, getattr(doc, 'metadata', {}).get('url',''))} "
             f"ID:{_fmt(getattr(doc, 'metadata', {}),'id')} "
             f"XPATH:{_fmt(getattr(doc, 'metadata', {}),'xpath')} "
             f"TEXT:{_fmt(getattr(doc, 'metadata', {}),'text', 160)} "
             f"DESC:{_fmt(getattr(doc, 'metadata', {}),'desc', 160)} "
-            f"ARIA:{_fmt(getattr(doc, 'metadata', {}), 'aria-label', 160)} "
+            f"ARIA:{_fmt(getattr(doc, 'metadata', {}),'aria-label', 160)} "
             f"PLACEHOLDER:{_fmt(getattr(doc, 'metadata', {}),'placeholder', 160)}"
             for doc in step_docs
         ])
@@ -857,7 +876,6 @@ def main():
 
     # LLM에 넘길 최종 context
     context = "\n\n".join(sections)
-
     function_context = "\n\n".join(doc.page_content[:2000] for doc in (default_docs + move_menu_docs))
 
     print("\n📌 context에 포함된 ID 목록(최대 60개 표시):")
@@ -891,16 +909,21 @@ def main():
     # 12) 후처리/검증/가드(간단 버전 유지)
     generated_code = validate_generated_code(generated_code, dom_docs + default_docs, auto_fix=True)
 
+    # 12-1) 대괄호 힌트 기반 보정 (fallback 용)
+    generated_code = convert_bracket_hints_to_exact_selectors(generated_code, dom_docs, query)
 
-    # 단계별(URL 스코프)로 셀렉터를 다시 한번 정밀 보정
+    # 12-2) 단계별(URL 스코프) 정밀 보정
     generated_code = rewrite_selectors_per_step(
         generated_code,
         dom_docs,
-        clean_steps,  # URL 제거된 단계 텍스트 (parse_step_urls에서 만들어진 값)
-        step_base_paths  # 각 단계에서 추출된 URL (parse_step_urls에서 만들어진 값)
+        clean_steps,          # URL 제거된 단계 텍스트
+        step_base_paths       # 각 단계에서 추출된 URL
     )
-    # 전역 가드(허구 ID → XPATH 등)
+
+    # 12-3) 전역 가드
     generated_code = enforce_known_selectors(generated_code, dom_docs, query, preferred_paths=preferred_paths)
+
+
     generated_code = postprocess_generated_code(generated_code)
 
     # 13) 출력 및 저장
@@ -913,7 +936,6 @@ def main():
     with open(file_name, "w", encoding="utf-8") as f:
         f.write(generated_code)
     print(f"\n✅ 코드가 '{file_name}' 파일로 저장되었습니다.")
-
 
 if __name__ == "__main__":
     main()
