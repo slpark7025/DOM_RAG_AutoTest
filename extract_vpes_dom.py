@@ -346,6 +346,37 @@ for menu_name, path in menu_paths.items():
             print(f"[⚠️ 함수 정보 저장 실패] {e}")
 
         continue
+    if path == "ProjectDetailGroupManage":
+        try:
+            driver.get(detail_url)
+            time.sleep(2)
+            try:
+                driver.find_element(By.ID, "projectSourceCode-tab").click()
+            except:
+                pass
+            time.sleep(2)
+            # 함수 정보 클릭
+            driver.find_element(By.XPATH, "//a[contains(text(),'그룹 정보')]").click()
+            time.sleep(2)  # 페이지 로딩 대기
+            save_html_with_url(f"{menu_path}/{file_name}", driver.page_source, rel_path)
+            print(f"[✅ 저장 완료] {menu_name} → {file_name}")
+
+            try:
+                n = open_each_kebab_and_save(
+                    driver,
+                    save_basepath=f"{menu_path}/{file_name}",
+                    rel_path=rel_path,
+                    max_buttons=6
+                )
+                if n:
+                    print(f"[✅ 더보기(⋮) 열린 상태 스냅샷 {n}건 추가 저장] {menu_name}")
+            except Exception as e:
+                print(f"[⚠️ 더보기 스냅샷 실패] {menu_name}: {e}")
+
+        except Exception as e:
+            print(f"[⚠️ 함수 정보 저장 실패] {e}")
+
+        continue
 
     # === 나머지 메뉴는 기존처럼 URL 직접 이동해서 저장 ===
     driver.get(url)
