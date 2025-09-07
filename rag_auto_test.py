@@ -16,6 +16,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 from validate_selector_ids import validate_generated_code  # ID 정합성 검증 모듈
 from typing import Optional
+
 # ========================= 공통 유틸 =========================
 def derive_base_path(s: str) -> str:
     """전체 URL/상대경로 무엇이든 받아 /vpes/<section> 형태로 변환"""
@@ -73,36 +74,47 @@ def patch_teardown(generated_code: str) -> str:
 def ensure_import(g: str, line: str) -> str:
     return (line + "\n" + g) if line not in g else g
 
-def strip_document_prefix_xpaths(g: str) -> str:
-    def _fix(xp: str) -> str:
-        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
-    def _repl_tuple(m):
-        quote = m.group(2); xp = m.group(3)
-        fixed = _fix(xp)
-        return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
-    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-    return g
-
 # 저장된 dom xpath에 /[document]가 종종 섞여 나올 때, /[document] 프리픽스를 지워서 Selenium이 이해할 수 있는 형태로 변경
 def strip_document_prefix_xpaths(g: str) -> str:
+    """
+    (By.XPATH, "...") 형태의 문자열 중
+    XPath가 '/[document]/' 또는 '/[document][숫자]/' 로 시작하면 그 프리픽스만 제거.
+    예) '/[document][1]/html[1]/body[1]/...' -> '/html[1]/body[1]/...'
+    """
+    # 1) 문자열 앞의 '/[document][n]/' 패턴만 없애는 헬퍼
     def _fix(xp: str) -> str:
         return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
+
+    # 2) 공통 치환기: (By.XPATH, "...") 캡처해서 내부만 교체
     def _repl_tuple(m):
-        quote = m.group(2); xp = m.group(3)
+        quote = m.group(2)
+        xp = m.group(3)
         fixed = _fix(xp)
         return f"{m.group(1)}{quote}{fixed}{quote}{m.group(4)}"
-    g = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-    g = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-    g = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, g, flags=re.DOTALL)
-    return g
+
+    text = g
+    # (a) (By.XPATH, "…")  — EC, until 등 모든 튜플 인자
+    text = re.sub(r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
+    # (b) .find_element(By.XPATH, "…")
+    text = re.sub(r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
+    # (c) .find_elements(By.XPATH, "…")
+    text = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
+
+    return text
+
+# ▼▼ 추가: rewrite 단계에서 사용하는 문서 프리픽스 제거 헬퍼(정의 누락 버그 수정)
+def _strip_doc_prefix(xp: str) -> str:
+    if not xp:
+        return xp
+    return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
 
 def postprocess_generated_code(generated_code: str) -> str:
     generated_code = remove_markdown(generated_code)
     generated_code = insert_sleep_before_assert(generated_code)
     generated_code = patch_teardown(generated_code)
     generated_code = patch_unittest_main(generated_code)
+    # ▼ 생성 코드에서 case_id 계산 시 os 사용 → import 누락 방지
+    generated_code = ensure_import(generated_code, "import os")
     generated_code = ensure_import(generated_code, "import unittest")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.common.by import By")
     generated_code = ensure_import(generated_code, "from selenium.webdriver.support.ui import WebDriverWait")
@@ -112,8 +124,7 @@ def postprocess_generated_code(generated_code: str) -> str:
     generated_code = strip_document_prefix_xpaths(generated_code)
     return generated_code
 
-
-def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=60, hard_cap_per_step=200):
+def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=40, hard_cap_per_step=200):
     """
     스텝별(base_path)로 컨텍스트 문서 수가 min_per_step 미만이면,
     각 DB의 'dom_elements' 컬렉션에서 메타데이터 url에 base_path가 포함된 문서를 직접 가져와 보충.
@@ -251,17 +262,8 @@ def _inventory_for_paths(dom_docs, base_paths):
     return allowed_ids, xpath_pool
 
 #실제 코드 리라이트 엔진
-# 스텝 블록 찾아서 위에서 만든 후보(xpath_pool) + 키워드 + 앵커-직전에 클릭한 요소(있으면)와 가까운 것에 가산점 줘서 가장 적합한 절대 xpath를 고른 후 실제 코드 치환
-# (위쪽 동일) ...
-
-
-
 def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_base_paths):
     import re
-
-    def _strip_doc_prefix(xp: str) -> str:
-        # '/[document][n]/' 프리픽스만 제거
-        return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp or '')
 
     def _lcp_len(a: str, b: str) -> int:
         a, b = (a or '').replace(' ', ''), (b or '').replace(' ', '')
@@ -270,13 +272,13 @@ def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_b
             i += 1
         return i
 
-    def _modal_prefix(xp: str) -> str | None:
+    def _modal_prefix(xp: str) -> Optional[str]:
         # /html[1]/body[1]/div[13]/div[1] 정도까지를 모달 루트 근사치로 사용
         s = (xp or '').replace(' ', '')
         m = re.match(r'^(/\s*html\[\d+\]/\s*body\[\d+\]/\s*div\[\d+\]/\s*div\[\d+\])', s)
         return m.group(1) if m else None
 
-    def _xpath_for_id(base, el_id):
+    def _xpath_for_id(base, el_id) -> Optional[str]:
         # 같은 base(URL) 범위에서 해당 ID의 절대 XPath 반환
         for d in dom_docs:
             m = getattr(d, "metadata", {}) or {}
@@ -329,7 +331,6 @@ def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_b
         header, body = m.group(1), m.group(2)
 
         # 스텝 자연어에서 키워드(저장/닫기/버튼 등)를 자동 추출
-        # → 하드코딩 리스트 없이 extract_keywords 사용
         step_kw = set(extract_keywords(txt))  # 이미 존재하는 유틸
 
         # 같은 스텝 내 첫 앵커: By.ID 사용 요소의 절대 XPATH (예: aiUnUse)
@@ -721,8 +722,7 @@ def main():
             for s in selected_dirs
         ]
         selected_dirs = [s for s in selected_dirs if os.path.isdir(s)]
-    else:
-        selected_dirs = auto_dirs
+    # else: 분기 제거 — 자동 매칭된 selected_dirs 그대로 사용 (auto_dirs 미정의 버그 제거)
 
     # URL별로 완전 분리해서 독립 검색 (URL마다 K_PER_BASE개까지)
     dom_docs_lc = retrieve_dom_docs_per_base(
@@ -922,7 +922,6 @@ def main():
 
     # 12-3) 전역 가드
     generated_code = enforce_known_selectors(generated_code, dom_docs, query, preferred_paths=preferred_paths)
-
 
     generated_code = postprocess_generated_code(generated_code)
 
