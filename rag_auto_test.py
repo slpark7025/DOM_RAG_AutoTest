@@ -61,15 +61,100 @@ def patch_unittest_main(generated_code: str) -> str:
     )
 
 def patch_teardown(generated_code: str) -> str:
-    # 과매칭 방지: 앵커/들여쓰기 기준 강화
-    return re.sub(
-        r'(?ms)^(\s*)def\s+tearDown\(self\):\s*\n(.*?\n)?\1\s*self\.driver\.quit\(\)\s*$',
-        r'''\1def tearDown(self):
-\1    result = default_setting.get_result(self)
-\1    default_setting.upload_result(self, case_id, result)
-\1    self.driver.quit()''',
-        generated_code
+    """
+    tearDown(self) 내용을 '표준 블록'으로 완전히 교체하되,
+    함수 경계를 정확히 산정해 중복 self.driver.quit()이나 잔여 주석/try 블록이 남지 않도록 한다.
+    - __main__ 블록 등 함수 밖 코드는 절대 건드리지 않음
+    - tearDown이 없으면 unittest.TestCase 클래스 직후에 삽입
+    - 각 행 사이 빈 줄(공백 행) 없이 출력
+    """
+    import ast
+    import re
+
+    # 표준 본문(빈 줄 없음)
+    def _make_teardown(indent: str) -> str:
+        body = (
+            f"{indent}def tearDown(self):\n"
+            f"{indent}    result = default_setting.get_result(self)\n"
+            f"{indent}    default_setting.upload_result(self, case_id, result)\n"
+            f"{indent}    self.driver.quit()\n"
+        )
+        return body
+
+    code = generated_code
+    uses_crlf = "\r\n" in code
+    # 토크나이즈 안정화를 위해 탭->4공백만 변환(출력은 원래 개행 유지)
+    code_norm = code.replace("\t", "    ")
+
+    # 1) AST로 정확히 tearDown 함수 범위를 잡아 교체
+    try:
+        tree = ast.parse(code_norm)
+        lines = code_norm.splitlines(keepends=True)
+
+        # tearDown 함수 노드 찾기
+        td = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "tearDown":
+                td = node
+                break
+
+        if td and hasattr(td, "lineno") and hasattr(td, "end_lineno") and td.end_lineno is not None:
+            start = td.lineno - 1
+            end = td.end_lineno  # slice용으로 이미 +1된 느낌으로 사용
+            # def 라인의 실제 들여쓰기 추출
+            def_line = lines[start]
+            base_indent = def_line[: len(def_line) - len(def_line.lstrip(" "))]
+
+            # 교체
+            new_block = _make_teardown(base_indent)
+            new_lines = lines[:start] + [new_block] + lines[end:]
+            out = "".join(new_lines)
+            if uses_crlf:
+                out = out.replace("\n", "\r\n")
+            return out
+    except SyntaxError:
+        # AST 실패 시 아래 정규식 fallback으로 처리
+        pass
+
+    # 2) 정규식 fallback: def tearDown 라인과 그 '더 깊은 들여쓰기 라인들' 전체를 교체
+    #  - 함수 본문: (def 들여쓰기보다 공백이 더 많은 라인들) 또는 완전 빈 줄
+    pat = re.compile(
+        r'^([ \t]*)def\s+tearDown\s*\(\s*self\s*\)\s*:\s*\r?\n'   # def 라인
+        r'('
+        r'(?:\1[ \t]+.*\r?\n|'                                    # 더 깊은 들여쓰기 라인
+        r'[ \t]*\r?\n)*'                                          # 혹은 빈 줄들
+        r')',
+        flags=re.MULTILINE,
     )
+
+    def _repl(m: re.Match) -> str:
+        base = m.group(1).replace("\t", "    ")
+        return _make_teardown(base)
+
+    code2, n = pat.subn(_repl, code_norm, count=1)
+    if n > 0:
+        if uses_crlf:
+            code2 = code2.replace("\n", "\r\n")
+        return code2
+
+    # 3) tearDown이 없으면: unittest.TestCase 클래스 선언 직후에 삽입
+    class_pat = re.compile(
+        r'^([ \t]*)class\s+[A-Za-z_][A-Za-z0-9_]*\s*\(\s*unittest\.TestCase\s*\)\s*:\s*\r?\n',
+        flags=re.MULTILINE,
+    )
+    m = class_pat.search(code_norm)
+    if m:
+        cls_indent = m.group(1).replace("\t", "    ")
+        body_indent = cls_indent + "    "
+        insert_at = m.end()
+        out = code_norm[:insert_at] + _make_teardown(body_indent) + code_norm[insert_at:]
+        if uses_crlf:
+            out = out.replace("\n", "\r\n")
+        return out
+
+    # 4) 클래스도 없으면 원본 유지
+    return generated_code
+
 
 def ensure_import(g: str, line: str) -> str:
     return (line + "\n" + g) if line not in g else g
@@ -332,7 +417,7 @@ def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_b
 
         # 스텝 자연어에서 키워드(저장/닫기/버튼 등)를 자동 추출
         step_kw = set(extract_keywords(txt))  # 이미 존재하는 유틸
-
+        '''
         # 같은 스텝 내 첫 앵커: By.ID 사용 요소의 절대 XPATH (예: aiUnUse)
         ids_used = re.findall(r'By\.ID\s*,\s*["\']([^"\']+)["\']', body)
         anchor_xp = None
@@ -385,6 +470,7 @@ def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_b
 
         new_body.append(body[last:])
         body = ''.join(new_body)
+        '''
 
         generated_code = generated_code[:m.start()] + header + body + generated_code[m.end():]
 
@@ -539,8 +625,8 @@ def retrieve_dom_docs_per_base(
         query_for_bp = "\n".join(steps_by_base.get(bp, [])) or bp
         docs_bp = retrieve_from_selected_dirs(
             selected_dirs=dirs_for_bp,
-            query=query_for_bp,
             embedding=embedding,
+            query=query_for_bp,
             k_total=K_PER_BASE,
             mmr_fetch_factor=5,
             mmr_lambda=0.35,
@@ -654,6 +740,11 @@ def main():
 
     # 5) 테스트케이스명/시나리오 입력
     tc_name = input("테스트케이스명을 입력하세요 (예: C8270): ").strip()
+
+    # === 추가 입력: 메뉴트리 섹션 / TC 제목 (시나리오 입력 전) ===
+    menu_tree_section = input("메뉴트리 섹션을 입력하세요: ").strip()
+    tc_title = input("TC 제목을 입력하세요: ").strip()
+
     print("💬 테스트 시나리오를 단계별로 입력하세요 (한 줄에 한 단계).")
     print("    ↳ 각 단계 끝에 /vpes/... 또는 http(s)://.../vpes/... 를 붙이면 그 URL 스코프로 셀렉터를 고릅니다.")
     print("    ↳ 빈 줄(Enter)을 입력하면 종료됩니다.")
@@ -924,6 +1015,10 @@ def main():
     generated_code = enforce_known_selectors(generated_code, dom_docs, query, preferred_paths=preferred_paths)
 
     generated_code = postprocess_generated_code(generated_code)
+
+    # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입 (다른 로직/프롬프트에는 영향 없음) ===
+    header_comment = f'# MenuTree : {menu_tree_section}\n# Summary : {tc_title}\n'
+    generated_code = header_comment + generated_code
 
     # 13) 출력 및 저장
     print("\n💻 생성된 Selenium 테스트 코드:")
