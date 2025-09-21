@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-# pip install -U langchain langchain-openai langchain-community chromadb tiktoken python-dotenv
+# pip install -U langchain langchain-openai langchain-community chromadb tiktoken python-dotenv openpyxl
 
 import os
 import re
 import math
 import json
+import sys
+import time
+import subprocess
+from datetime import datetime
 from urllib.parse import urljoin, urlsplit
 from dotenv import load_dotenv
 
@@ -12,7 +16,7 @@ import chromadb
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableMap
+from langchain_core.runnables import RunnableMap, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 
 from validate_selector_ids import validate_generated_code  # ID 정합성 검증 모듈
@@ -37,9 +41,10 @@ def extract_keywords(text):
 def _extract_first_json(s: str) -> str | None:
     s = s.strip()
 
-    # 1) fenced code block ```json ... ```
-    for m in re.finditer(r"```[ \t]*([a-zA-Z0-9_-]+)?[ \t]*\r?\n([\s\S]*?)\r?\n```", s, flags=re.IGNORECASE):
-        block = m.group(2).strip()
+    # 1) 코드펜스(개행 유무/언어태그 변형 모두 허용)
+    m = re.search(r"```(?:\s*[a-zA-Z0-9_-]+)?\s*\n?([\s\S]*?)\n?```", s)
+    if m:
+        block = m.group(1).strip()
         if block.startswith("{") or block.startswith("["):
             try:
                 json.loads(block)
@@ -47,30 +52,23 @@ def _extract_first_json(s: str) -> str | None:
             except Exception:
                 pass
 
-    # 2) 균형 괄호로 { ... } 추출
-    def _balanced(sig="{", end="}"):
-        start = s.find(sig)
-        if start == -1:
-            return None
-        depth = 0
-        for i in range(start, len(s)):
-            ch = s[i]
-            if ch == sig:
-                depth += 1
-            elif ch == end:
+    # 2) 첫 번째 유효한 { ... } 덩어리 스캔(중첩 괄호 허용)
+    depth = 0; start = -1
+    for i, ch in enumerate(s):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
                 depth -= 1
-                if depth == 0:
-                    return s[start:i+1]
-        return None
-
-    cand = _balanced("{", "}")
-    if cand:
-        try:
-            json.loads(cand)
-            return cand
-        except Exception:
-            pass
-
+                if depth == 0 and start != -1:
+                    cand = s[start:i+1]
+                    try:
+                        json.loads(cand)
+                        return cand
+                    except Exception:
+                        start = -1
     return None
 
 def enforce_known_selectors(generated_code: str, dom_docs, question: str, preferred_paths=()):
@@ -196,7 +194,13 @@ def patch_teardown(generated_code: str) -> str:
 
 
 def ensure_import(g: str, line: str) -> str:
-    return (line + "\n" + g) if line not in g else g
+    if line in g:
+        return g
+    lines = g.splitlines(True)
+    insert_at = 0
+    if lines and (lines[0].startswith("#!") or "coding" in lines[0]):
+        insert_at = 1
+    return "".join(lines[:insert_at] + [line + "\n"] + lines[insert_at:])
 
 # 저장된 dom xpath에 /[document]가 종종 섞여 나올 때, /[document] 프리픽스를 지워서 Selenium이 이해할 수 있는 형태로 변경
 def strip_document_prefix_xpaths(g: str) -> str:
@@ -471,6 +475,8 @@ def retrieve_dom_docs_per_base(
             continue
         key_fragment = os.path.basename(bp).lower()
         dirs_for_bp = [d for d in dirs_for_bp if key_fragment in os.path.basename(d).lower()]
+        if not dirs_for_bp:
+            dirs_for_bp = selected_dirs  # 🔁 fallback
         query_for_bp = "\n".join(steps_by_base.get(bp, [])) or bp
         docs_bp = retrieve_from_selected_dirs(
             selected_dirs=dirs_for_bp,
@@ -490,6 +496,119 @@ def extract_step_comments_from_code(code: str) -> list[str]:
     """
     pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$', re.MULTILINE)
     return [f"{m.group(1)}. {m.group(2).strip()}" for m in pat.finditer(code)]
+
+# ========================= (추가) 테스트 자동 실행 + Excel 로깅 =========================
+def _script_dir() -> str:
+    try:
+        return os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        return os.getcwd()
+
+def run_generated_test(file_path: str, timeout_sec: int = 900,
+                       extra_args: list[str] | None = None,
+                       extra_env: dict[str, str] | None = None) -> dict:
+    """
+    생성된 unittest 스크립트를 서브프로세스로 실행하고 결과 요약을 반환.
+    extra_args: ["127.0.0.1:38080", "1234", "sqa-vpes"] 같은 CLI 인자
+    extra_env : {"VPES_BASE_URL": "http://127.0.0.1:38080", ...} 같은 환경변수
+    """
+    import copy
+    script_dir = os.path.dirname(os.path.abspath(file_path))
+    cmd = [sys.executable, file_path] + (extra_args or [])
+    env = copy.deepcopy(os.environ)
+    if extra_env:
+        env.update(extra_env)
+
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
+    # 🔧 스크립트 폴더를 PYTHONPATH 맨 앞에 추가
+    sep = os.pathsep
+    env["PYTHONPATH"] = script_dir + (sep + env["PYTHONPATH"] if "PYTHONPATH" in env and env["PYTHONPATH"] else "")
+
+    start = time.time()
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=False,
+            timeout=timeout_sec,
+            env=env,
+            cwd=script_dir,  # 🔧 작업 디렉터리 고정
+        )
+        duration = round(time.time() - start, 2)
+        def _decode(b: bytes) -> str:
+            try:
+                return b.decode("utf-8")  # 1차 시도
+            except UnicodeDecodeError:
+                # 로캘로 재시도하되, 깨지는 바이트는 치환
+                return b.decode(locale.getpreferredencoding(False), errors="replace")
+
+        out = _decode(proc.stdout or b"")
+        err = _decode(proc.stderr or b"")
+        if re.search(r'FAILED\s*\(', out, re.IGNORECASE) or "Traceback (most recent call last):" in out or proc.returncode != 0:
+            status = "FAIL"
+        elif re.search(r'^\s*OK\s*$', out, re.MULTILINE):
+            status = "PASS"
+        else:
+            status = "UNKNOWN"
+        return {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "case_id": os.path.splitext(os.path.basename(file_path))[0],
+            "status": status,
+            "duration_sec": duration,
+            "returncode": proc.returncode,
+            "file": file_path,
+            "stdout_tail": out[-20000:],
+            "stderr_tail": err[-20000:],
+        }
+    except subprocess.TimeoutExpired as e:
+        duration = round(time.time() - start, 2)
+        return {
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "case_id": os.path.splitext(os.path.basename(file_path))[0],
+            "status": "TIMEOUT",
+            "duration_sec": duration,
+            "returncode": -1,
+            "file": file_path,
+            "stdout_tail": (getattr(e, "stdout", "") or "")[-20000:],
+            "stderr_tail": (getattr(e, "stderr", "") or "")[-20000:],
+        }
+
+def append_result_to_excel(xlsx_path: str, result: dict) -> None:
+    """
+    결과를 test_result.xlsx에 누적 기록.
+    - 파일이 없으면 생성 후 헤더 작성.
+    - 있으면 마지막 행 뒤에 append.
+    """
+    from openpyxl import Workbook, load_workbook
+
+    headers = ["timestamp", "case_id", "status", "duration_sec", "returncode", "file", "stdout_tail", "stderr_tail"]
+    if os.path.exists(xlsx_path):
+        wb = load_workbook(xlsx_path)
+        ws = wb.active
+        # 헤더가 없으면 생성
+        if ws.max_row == 0:
+            ws.append(headers)
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.append(headers)
+
+    ws = wb.active
+    ws.append([result.get(h, "") for h in headers])
+    wb.save(xlsx_path)
+
+def run_and_log(file_name: str, cli_args: list[str] | None = None,
+                env_vars: dict[str, str] | None = None) -> dict:
+    base_dir = _script_dir()
+    test_file = os.path.join(base_dir, file_name)
+    result = run_generated_test(test_file, timeout_sec=900,
+                                extra_args=cli_args, extra_env=env_vars)
+    xlsx_path = os.path.join(base_dir, "test_result.xlsx")
+    append_result_to_excel(xlsx_path, result)
+    print(f"\n🗂️ 자동 실행 결과: {result['status']} (returncode={result['returncode']}, duration={result['duration_sec']}s)")
+    print(f"➡️ 결과가 '{xlsx_path}'에 누적 저장되었습니다.")
+    return result
 
 # ========================= 메인 로직 =========================
 def main():
@@ -897,10 +1016,13 @@ def main():
             "- 단계의 의미/핵심 동작 일치 여부 (문구가 조금 달라도 의미가 같으면 OK)\n"
             "- 누락 단계, 순서 오류, 잘못된 URL 스코프 추정, 동작/셀렉터 불일치는 ISSUE\n\n"
             "출력 형식(JSON만 출력):\n"
-            "{{\"compliance\": true|false, \"issues\": [\"사유1\", \"사유2\", \"...\"]}}\n\n"
+            "{{\"compliance\": true|false, \"issues\": [\"사유1\", \"사유2\", \"...\"]}}\n\n"  # ← 중괄호 이스케이프
             "[시나리오]\n{scenario}\n\n[스크립트_주석]\n{code_steps}\n"
         ),
     )
+
+    # 평가 LLM은 JSON 모드 권장(코드펜스 섞임 방지)
+    eval_llm = llm.bind(response_format={"type": "json_object"})
 
     eval_chain = (
         RunnableMap({
@@ -908,7 +1030,7 @@ def main():
             "code_steps": lambda _: code_steps_text
         })
         | eval_prompt
-        | llm
+        | eval_llm
         | StrOutputParser()
     )
 
@@ -924,8 +1046,23 @@ def main():
     except Exception:
         parsed = None
 
+    # ========================= (신규) 자동 실행 체인 =========================
+    execute_chain = RunnableLambda(lambda _: run_and_log(file_name))
+
     if isinstance(parsed, dict) and parsed.get("compliance") is True:
         print("생성된 스크립트가 시나리오에 부합합니다.")
+
+        # ▼ 여기서 원하는 인자를 지정하세요
+        sample_cli_args = ["127.0.0.1:38080", "1234", "sqa-vpes"]  # 질문 주신 3개 인자
+        # (선택) 환경변수로도 병행 전달 — default_setting이 env를 읽는 경우 안전망
+        sample_env = {
+            "VPES_BASE_URL": "http://127.0.0.1:38080",
+            "VPES_PASSWORD": "1234",
+            "VPES_PROJECT": "sqa-vpes",
+        }
+
+        # 자동 실행 + 엑셀 누적
+        _ = run_and_log(file_name, cli_args=sample_cli_args, env_vars=sample_env)
     elif isinstance(parsed, dict):
         issues = parsed.get("issues") or []
         if issues:
