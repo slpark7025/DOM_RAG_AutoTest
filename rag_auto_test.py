@@ -4,6 +4,7 @@
 import os
 import re
 import math
+import json
 from urllib.parse import urljoin, urlsplit
 from dotenv import load_dotenv
 
@@ -15,7 +16,6 @@ from langchain_core.runnables import RunnableMap
 from langchain_core.output_parsers import StrOutputParser
 
 from validate_selector_ids import validate_generated_code  # ID 정합성 검증 모듈
-from typing import Optional
 
 # ========================= 공통 유틸 =========================
 def derive_base_path(s: str) -> str:
@@ -34,8 +34,47 @@ def extract_keywords(text):
 
     return words + bracket_hints + paren_hints
 
+def _extract_first_json(s: str) -> str | None:
+    s = s.strip()
+
+    # 1) fenced code block ```json ... ```
+    for m in re.finditer(r"```[ \t]*([a-zA-Z0-9_-]+)?[ \t]*\r?\n([\s\S]*?)\r?\n```", s, flags=re.IGNORECASE):
+        block = m.group(2).strip()
+        if block.startswith("{") or block.startswith("["):
+            try:
+                json.loads(block)
+                return block
+            except Exception:
+                pass
+
+    # 2) 균형 괄호로 { ... } 추출
+    def _balanced(sig="{", end="}"):
+        start = s.find(sig)
+        if start == -1:
+            return None
+        depth = 0
+        for i in range(start, len(s)):
+            ch = s[i]
+            if ch == sig:
+                depth += 1
+            elif ch == end:
+                depth -= 1
+                if depth == 0:
+                    return s[start:i+1]
+        return None
+
+    cand = _balanced("{", "}")
+    if cand:
+        try:
+            json.loads(cand)
+            return cand
+        except Exception:
+            pass
+
+    return None
+
 def enforce_known_selectors(generated_code: str, dom_docs, question: str, preferred_paths=()):
-    """ID는 절대 건드리지 않음"""
+    """ID는 절대 건드리지 않음 (현재 스텁)"""
     return generated_code
 
 def remove_markdown(generated_code: str) -> str:
@@ -187,12 +226,6 @@ def strip_document_prefix_xpaths(g: str) -> str:
 
     return text
 
-# ▼▼ 추가: rewrite 단계에서 사용하는 문서 프리픽스 제거 헬퍼(정의 누락 버그 수정)
-def _strip_doc_prefix(xp: str) -> str:
-    if not xp:
-        return xp
-    return re.sub(r'^\s*/\s*\[document\](?:\[\d+\])?/?', '/', xp)
-
 def postprocess_generated_code(generated_code: str) -> str:
     generated_code = remove_markdown(generated_code)
     generated_code = insert_sleep_before_assert(generated_code)
@@ -208,42 +241,6 @@ def postprocess_generated_code(generated_code: str) -> str:
     generated_code = ensure_import(generated_code, "import default_setting")
     generated_code = strip_document_prefix_xpaths(generated_code)
     return generated_code
-
-def backfill_step_docs_if_needed(dom_docs, selected_dirs, embedding, step_base_paths, min_per_step=40, hard_cap_per_step=200):
-    """
-    스텝별(base_path)로 컨텍스트 문서 수가 min_per_step 미만이면,
-    각 DB의 'dom_elements' 컬렉션에서 메타데이터 url에 base_path가 포함된 문서를 직접 가져와 보충.
-    (중복 방지, 최대 hard_cap_per_step까지)
-    """
-    # 이미 가진 문서의 중복 키 집합
-    seen = set()
-    for d in dom_docs:
-        m = getattr(d, "metadata", {}) or {}
-        seen.add((m.get("url") or "", m.get("xpath") or "", m.get("id") or ""))
-    def count_for(base):
-        return sum(1 for d in dom_docs if base and base in (getattr(d, "metadata", {}) or {}).get("url", ""))
-    bases_in_order = list(dict.fromkeys([bp for bp in step_base_paths if bp]))
-    for base in bases_in_order:
-        if count_for(base) >= min_per_step:
-            continue
-        for db_dir in selected_dirs:
-            try:
-                client = chromadb.PersistentClient(path=db_dir)
-                coll = client.get_collection(name="dom_elements")
-                raw = coll.get(include=["metadatas", "documents"], limit=100000)
-                mets = raw.get("metadatas", []) or []; docs = raw.get("documents", []) or []
-                for meta, doc in zip(mets, docs):
-                    u = (meta or {}).get("url") or ""
-                    if base not in u: continue
-                    key = (u, meta.get("xpath") or "", meta.get("id") or "")
-                    if key in seen: continue
-                    seen.add(key)
-                    dom_docs.append(type("Doc", (object,), {"metadata": meta, "page_content": doc}))
-                    if count_for(base) >= hard_cap_per_step: break
-                if count_for(base) >= min_per_step: break
-            except Exception as e:
-                print(f"[백필 경고] {db_dir} 접근 실패: {e}")
-    return dom_docs
 
 # ====== 대괄호 힌트 기반 보정 함수 ======
 def convert_bracket_hints_to_exact_selectors(generated_code: str, dom_docs, question: str) -> str:
@@ -326,156 +323,9 @@ def convert_bracket_hints_to_exact_selectors(generated_code: str, dom_docs, ques
     return generated_code
 
 # ========================= 단계별(URL 스코프) 셀렉터 리라이트 =========================
-# 해당 URL 스코프(base_paths)에 들어맞는 DOM들을 골라서 데이터 준비해줌
-def _inventory_for_paths(dom_docs, base_paths):
-    allowed_ids = set(); xpath_pool = []
-    for d in dom_docs:
-        m = getattr(d, "metadata", {}) or {}
-        u = (m.get("url") or "")
-        tag = (m.get("tag") or "").lower()
-        xp = (m.get("xpath") or "")
-        if base_paths and not any(p and p in u for p in base_paths): continue
-        if m.get("id"): allowed_ids.add(m["id"])
-        if m.get("xpath"):
-            blob = " ".join([(m.get("text") or ""), (m.get("desc") or ""), (m.get("tag") or ""),
-                             (m.get("aria-label") or ""), (m.get("placeholder") or "")]).lower()
-            xpath_pool.append({
-                "xpath": m["xpath"], "id": (m.get("id") or ""), "url": u, "blob": blob,
-                "aria": (m.get("aria-label") or ""), "placeholder": (m.get("placeholder") or ""),
-                "tag": tag, "xpath_lower": xp.lower(), "desc": (m.get("desc") or ""),
-            })
-    return allowed_ids, xpath_pool
-
-#실제 코드 리라이트 엔진
 def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_base_paths):
-    import re
-
-    def _lcp_len(a: str, b: str) -> int:
-        a, b = (a or '').replace(' ', ''), (b or '').replace(' ', '')
-        n = min(len(a), len(b)); i = 0
-        while i < n and a[i] == b[i]:
-            i += 1
-        return i
-
-    def _modal_prefix(xp: str) -> Optional[str]:
-        # /html[1]/body[1]/div[13]/div[1] 정도까지를 모달 루트 근사치로 사용
-        s = (xp or '').replace(' ', '')
-        m = re.match(r'^(/\s*html\[\d+\]/\s*body\[\d+\]/\s*div\[\d+\]/\s*div\[\d+\])', s)
-        return m.group(1) if m else None
-
-    def _xpath_for_id(base, el_id) -> Optional[str]:
-        # 같은 base(URL) 범위에서 해당 ID의 절대 XPath 반환
-        for d in dom_docs:
-            m = getattr(d, "metadata", {}) or {}
-            if base and base not in (m.get("url") or ""):
-                continue
-            if (m.get("id") or "") == el_id:
-                return _strip_doc_prefix(m.get("xpath") or "")
-        return None
-
-    def _candidate_pool(base, modal_pref=None):
-        # 같은 base(URL) 안의 모든 요소(태그 구분 X)를 후보로 두되,
-        # modal_pref가 있으면 그 prefix로 시작하는 애들만 남긴다.
-        pool = []
-        for d in dom_docs:
-            m = getattr(d, "metadata", {}) or {}
-            if base and base not in (m.get("url") or ""):
-                continue
-            xp = _strip_doc_prefix(m.get("xpath") or "")
-            if not xp:
-                continue
-            if modal_pref:
-                if not xp.replace(' ', '').startswith(modal_pref.replace(' ', '')):
-                    continue
-            # 텍스트/설명/클래스 기반 매칭용 blob
-            blob = " ".join([
-                (m.get("text") or ""), (m.get("desc") or ""), (m.get("class") or "")
-            ]).lower()
-            pool.append({
-                "xpath": xp,
-                "blob": blob,
-                "tag": (m.get("tag") or "").lower(),
-            })
-        return pool
-
-    # 클릭용 XPATH 인자만 교체 (By.ID는 절대 안 바꿈)
-    ec_xpath_pat = re.compile(
-        r'(element_to_be_clickable\(\(\s*By\.XPATH\s*,\s*)(["\'])(/[^"\']+)\2(\s*\)\))'
-    )
-
-    for idx, (txt, url) in enumerate(zip(step_texts, step_base_paths), start=1):
-        base = derive_base_path(url) if url else None
-        if not base:
-            continue
-
-        # '# n.' 블록 추출
-        pat = re.compile(rf'(^\s*#\s*{idx}\.\s.*?$)([\s\S]*?)(?=^\s*#\s*\d+\.\s|\Z)', re.MULTILINE)
-        m = pat.search(generated_code)
-        if not m:
-            continue
-        header, body = m.group(1), m.group(2)
-
-        # 스텝 자연어에서 키워드(저장/닫기/버튼 등)를 자동 추출
-        step_kw = set(extract_keywords(txt))  # 이미 존재하는 유틸
-        '''
-        # 같은 스텝 내 첫 앵커: By.ID 사용 요소의 절대 XPATH (예: aiUnUse)
-        ids_used = re.findall(r'By\.ID\s*,\s*["\']([^"\']+)["\']', body)
-        anchor_xp = None
-        for el_id in ids_used:
-            anchor_xp = _xpath_for_id(base, el_id)
-            if anchor_xp:
-                break
-
-        last_chosen_xp = None  # 같은 스텝에서 바로 직전에 선택된 XPATH (체인용)
-
-        # 본문 안의 클릭 대상을 순서대로 치환
-        new_body, last = [], 0
-        for mm in ec_xpath_pat.finditer(body):
-            start, end = mm.span()
-            new_body.append(body[last:start])
-
-            # 현재 앵커 기준으로 modal prefix 계산
-            modal_pref = _modal_prefix(anchor_xp) if anchor_xp else None
-            pool = _candidate_pool(base, modal_pref)
-
-            # 점수 함수: 자연어 키워드 매칭 + 앵커 근접(LCP) + 같은 XPATH 재사용 페널티
-            best_xp, best_score = None, -10**9
-            for it in pool:
-                s = 0
-                # 자연어 키워드(저장/닫기/버튼 등)와 blob(text/desc/class) 매칭
-                if step_kw:
-                    s += sum(1 for k in step_kw if k in it["blob"])
-
-                # 앵커와의 공통 접두 길이(모달/근접도)
-                if anchor_xp:
-                    s += min(60, _lcp_len(anchor_xp, it["xpath"]) // 3)
-
-                # 같은 스텝에서 바로 직전과 동일한 XPATH는 약한 페널티(두 번 연속 같은 버튼 선택 방지)
-                if last_chosen_xp and it["xpath"].replace(' ', '') == last_chosen_xp.replace(' ', ''):
-                    s -= 8
-
-                if s > best_score:
-                    best_xp, best_score = it["xpath"], s
-
-            # 최종 치환(없으면 원본 유지)
-            if best_xp:
-                new_body.append(mm.group(1) + '"' + best_xp + '"' + mm.group(4))
-                # 다음 클릭을 위해 앵커/직전 선택 갱신 (체인)
-                anchor_xp = best_xp
-                last_chosen_xp = best_xp
-            else:
-                new_body.append(body[start:end])
-
-            last = end
-
-        new_body.append(body[last:])
-        body = ''.join(new_body)
-        '''
-
-        generated_code = generated_code[:m.start()] + header + body + generated_code[m.end():]
-
+    """(현재 동작) 생성 코드를 변경하지 않고 그대로 반환"""
     return generated_code
-
 
 # ========================= URL 기반 컨텍스트 전처리(핵심) =========================
 def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
@@ -541,7 +391,6 @@ def parse_step_urls(lines):
 
 # ========================= 선택 DB 라우팅 & 검색 =========================
 CHROMA_BASE_DIR = "./chroma"  # JSON별 DB 폴더들이 위치한 루트
-USE_BACKFILL = False  # 필요할 때만 True로 전환 -> 특정 스텝 DOM이 빠진다! 싶을때만 켜기!
 
 def select_chroma_dirs(base_dir: str, user_inputs: list[str]) -> list[str]:
     if not os.path.isdir(base_dir):
@@ -634,6 +483,14 @@ def retrieve_dom_docs_per_base(
         all_docs.extend(docs_bp)
     return all_docs
 
+# ========================= (추가) 스크립트의 Step 주석 추출 헬퍼 =========================
+def extract_step_comments_from_code(code: str) -> list[str]:
+    """
+    생성된 코드 안의 '# N. 설명' 형식 주석을 추출하여 'N. 설명' 리스트로 반환
+    """
+    pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$', re.MULTILINE)
+    return [f"{m.group(1)}. {m.group(2).strip()}" for m in pat.finditer(code)]
+
 # ========================= 메인 로직 =========================
 def main():
     # 1) 환경 변수 로딩
@@ -643,11 +500,13 @@ def main():
         raise RuntimeError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다. .env 또는 환경변수를 확인하세요.")
 
     # 2) LLM/임베딩 초기화
-    llm = ChatOpenAI(model="gpt-5")
+    #llm = ChatOpenAI(model="gpt-5")
+    llm = ChatOpenAI(
+        model="gpt-5-chat-latest",
+        use_responses_api=True,  # Responses API 사용 권장
+        output_version="responses/v1",  # reasoning summary·내장툴 대응 포맷
+    )
     embedding = OpenAIEmbeddings(model="text-embedding-3-large")
-
-    # 3) 기본 URL
-    BASE_URL = "http://localhost:38080"
 
     # 4) Prompt 정의
     prompt = PromptTemplate(
@@ -841,13 +700,6 @@ def main():
         dedup.append(d)
     dom_docs = dedup
 
-    # URL별로 최소 문서수 보장
-    if USE_BACKFILL:
-        dom_docs = backfill_step_docs_if_needed(
-            dom_docs, selected_dirs, embedding, step_base_paths,
-            min_per_step=60, hard_cap_per_step=200
-        )
-
     # 8) function_context 로드 (있을 때만)
     def safe_load_collection(persist_dir: str, collection_name: str):
         try:
@@ -1003,7 +855,7 @@ def main():
     # 12-1) 대괄호 힌트 기반 보정 (fallback 용)
     generated_code = convert_bracket_hints_to_exact_selectors(generated_code, dom_docs, query)
 
-    # 12-2) 단계별(URL 스코프) 정밀 보정
+    # 12-2) 단계별(URL 스코프) 정밀 보정 (현재는 무변경)
     generated_code = rewrite_selectors_per_step(
         generated_code,
         dom_docs,
@@ -1011,12 +863,12 @@ def main():
         step_base_paths       # 각 단계에서 추출된 URL
     )
 
-    # 12-3) 전역 가드
+    # 12-3) 전역 가드(스텁)
     generated_code = enforce_known_selectors(generated_code, dom_docs, query, preferred_paths=preferred_paths)
 
     generated_code = postprocess_generated_code(generated_code)
 
-    # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입 (다른 로직/프롬프트에는 영향 없음) ===
+    # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입 ===
     header_comment = f'# MenuTree : {menu_tree_section}\n# Summary : {tc_title}\n'
     generated_code = header_comment + generated_code
 
@@ -1030,6 +882,61 @@ def main():
     with open(file_name, "w", encoding="utf-8") as f:
         f.write(generated_code)
     print(f"\n✅ 코드가 '{file_name}' 파일로 저장되었습니다.")
+
+    # 14) 시나리오-스크립트 적합성 검토
+    code_step_lines = extract_step_comments_from_code(generated_code)
+    scenario_text = query
+    code_steps_text = "\n".join(code_step_lines) if code_step_lines else "(no step comments found)"
+
+    eval_prompt = PromptTemplate(
+        input_variables=["scenario", "code_steps"],
+        template=(
+            "다음은 사용자가 입력한 테스트 시나리오와 생성된 자동화 스크립트의 Step 주석 목록입니다.\n"
+            "당신의 작업: 시나리오의 각 단계가 스크립트 주석에 의해 정확히 구현되었는지 검토하세요.\n\n"
+            "검토 기준:\n"
+            "- 단계의 의미/핵심 동작 일치 여부 (문구가 조금 달라도 의미가 같으면 OK)\n"
+            "- 누락 단계, 순서 오류, 잘못된 URL 스코프 추정, 동작/셀렉터 불일치는 ISSUE\n\n"
+            "출력 형식(JSON만 출력):\n"
+            "{{\"compliance\": true|false, \"issues\": [\"사유1\", \"사유2\", \"...\"]}}\n\n"
+            "[시나리오]\n{scenario}\n\n[스크립트_주석]\n{code_steps}\n"
+        ),
+    )
+
+    eval_chain = (
+        RunnableMap({
+            "scenario": lambda _: scenario_text,
+            "code_steps": lambda _: code_steps_text
+        })
+        | eval_prompt
+        | llm
+        | StrOutputParser()
+    )
+
+    eval_raw = eval_chain.invoke({})
+
+    print("\n🧪 시나리오-스크립트 적합성 검토 결과:")
+
+    payload = _extract_first_json(eval_raw) or eval_raw.strip()
+
+    parsed = None
+    try:
+        parsed = json.loads(payload)
+    except Exception:
+        parsed = None
+
+    if isinstance(parsed, dict) and parsed.get("compliance") is True:
+        print("생성된 스크립트가 시나리오에 부합합니다.")
+    elif isinstance(parsed, dict):
+        issues = parsed.get("issues") or []
+        if issues:
+            print("다음 사유로 시나리오와 불일치합니다:")
+            for i, issue in enumerate(issues, 1):
+                print(f" - {i}. {issue}")
+        else:
+            print("시나리오와 완전 일치하지 않는 것으로 보이나, 상세 사유가 제공되지 않았습니다.")
+    else:
+        print("검토 결과를 해석할 수 없어 원문을 출력합니다:")
+        print(eval_raw.strip())
 
 if __name__ == "__main__":
     main()
