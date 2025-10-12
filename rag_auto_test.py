@@ -39,6 +39,44 @@ def extract_keywords(text):
 
     return words + bracket_hints + paren_hints
 
+def replace_hint_per_step(code: str, step_hints_map: dict[int, dict[str, tuple[str, str]]]) -> str:
+    """
+    step_hints_map: { step_idx: { hint_lower: ("ID"|"XPATH", value), ... }, ... }
+    - 각 스텝 블록(# N. 제목 ~ 다음 스텝 주석 전까지)에서만 치환.
+    - By.ID로 이미 선택된 로케이터는 건드리지 않음.
+    """
+    parts = re.split(r'(^\s*#\s*\d+\.\s*.*$)', code, flags=re.MULTILINE)
+    out, curr_step = [], None
+
+    for chunk in parts:
+        m = re.match(r'^\s*#\s*(\d+)\.\s*', chunk)
+        if m:
+            curr_step = int(m.group(1))
+            out.append(chunk)
+            continue
+
+        if curr_step and curr_step in step_hints_map:
+            repl_map = step_hints_map[curr_step]
+
+            def _sub_xpath(mo: re.Match) -> str:
+                xpath = mo.group(2)
+                xlow = xpath.lower()
+                for hint_lower, (typ, val) in repl_map.items():
+                    if hint_lower in xlow:
+                        if typ == "ID":
+                            return f'(By.ID, "{val}")'
+                        else:
+                            return f'(By.XPATH, "{val}")'
+                return mo.group(0)
+
+            # By.XPATH 만 대상으로, 힌트 단어가 포함된 경우에만 치환
+            chunk = re.sub(r'(\(\s*By\.XPATH\s*,\s*["\'])(.+?)(["\']\s*\))',
+                           _sub_xpath, chunk, flags=re.IGNORECASE | re.DOTALL)
+
+        out.append(chunk)
+
+    return ''.join(out)
+
 def _extract_first_json(s: str) -> str | None:
     s = s.strip()
 
@@ -103,7 +141,6 @@ def patch_teardown(generated_code: str) -> str:
     - 각 행 사이 빈 줄(공백 행) 없이 출력
     """
     import ast
-    import re
 
     # 표준 본문(빈 줄 없음)
     def _make_teardown(indent: str) -> str:
@@ -244,84 +281,66 @@ def postprocess_generated_code(generated_code: str) -> str:
     return generated_code
 
 # ====== 대괄호 힌트 기반 보정 함수 ======
-def convert_bracket_hints_to_exact_selectors(generated_code: str, dom_docs, question: str) -> str:
+def convert_bracket_hints_to_exact_selectors_per_step(generated_code: str, dom_docs, question: str) -> str:
     """
-    단계 텍스트에 [힌트]가 있을 때만, 해당 단계의 URL 스코프 내에서
-    힌트와 매칭되는 ID 또는 XPATH를 찾아 (By.XPATH, "...hint...") 패턴을
-    (By.ID, "id") 또는 (By.XPATH, "절대경로")로 교체.
-    * 단, By.ID로 이미 지정된 선택자는 건드리지 않음.
+    question: '1. ... @URL:/vpes/SectionA\n2. ... @URL:/vpes/SectionB ...' 형태
+    - 각 스텝 라인의 [힌트]를 추출하고, 해당 스텝의 @URL 스코프 내 dom_docs에서
+      ID 또는 XPATH를 찾아 스텝 블록에만 치환.
     """
-    bracket_hints = re.findall(r'\[([^\]]+)\]', question)
-    if not bracket_hints:
-        return generated_code
+    step_hints_map: dict[int, dict[str, tuple[str, str]]] = {}
+    lines = [ln for ln in (question or "").splitlines() if ln.strip()]
 
-    step_lines = question.split('\n')
-    hint_to_selector = {}
+    for ln in lines:
+        m_num = re.match(r'^\s*(\d+)\.\s*(.*)$', ln)
+        if not m_num:
+            continue
+        step_idx = int(m_num.group(1))
+        text = m_num.group(2)
 
-    for step_line in step_lines:
-        step_hints = re.findall(r'\[([^\]]+)\]', step_line)
-        if not step_hints:
+        # 힌트와 base_path(@URL:...) 추출
+        hints = re.findall(r'\[([^\]]+)\]', text)
+        m_url = re.search(r'@URL:([^\s]+)', ln)
+        base_path = m_url.group(1).strip() if m_url else None
+
+        if not hints:
             continue
 
-        url_match = re.search(r'((?:https?://[^\s,)\]　]+)|(?:/vpes/[^\s,)\]　]+))', step_line, re.IGNORECASE)
-        step_base_path = None
-        if url_match:
-            url = url_match.group(1).strip()
-            step_base_path = derive_base_path(url)
+        # 스코프 문서 선택
+        scoped = docs_for_base(dom_docs, base_path) if base_path else dom_docs
 
-        if step_base_path:
-            scoped_docs = [doc for doc in dom_docs if step_base_path in ((getattr(doc, "metadata", {}) or {}).get("url") or "")]
-        else:
-            scoped_docs = dom_docs
-
-        for hint in step_hints:
+        for hint in hints:
             hint_lower = hint.lower()
-            best_match = None
-            # 태그 힌트 우선
+            best = None
+
+            # 1) 태그 이름 우선
             if hint_lower in ['span', 'div', 'button', 'input', 'a', 'li', 'p', 'h1', 'h2', 'h3']:
-                for doc in scoped_docs:
+                for doc in scoped:
                     meta = getattr(doc, "metadata", {}) or {}
                     if (meta.get("tag") or "").lower() == hint_lower:
                         if meta.get("id"):
-                            best_match = ("ID", meta["id"]); break
-                        elif meta.get("xpath"):
-                            best_match = ("XPATH", meta["xpath"]); break
-            # desc/class/xpath 포함 매칭
-            if not best_match:
-                for doc in scoped_docs:
+                            best = ("ID", meta["id"]); break
+                        if meta.get("xpath"):
+                            best = ("XPATH", meta["xpath"]); break
+
+            # 2) desc/class/xpath 포함 매칭
+            if not best:
+                for doc in scoped:
                     meta = getattr(doc, "metadata", {}) or {}
                     desc = (meta.get("desc") or "").lower()
-                    if (hint_lower in desc
-                        or hint_lower in (meta.get("class") or "").lower()
-                        or hint_lower in (meta.get("xpath") or "").lower()):
+                    clss = (meta.get("class") or "").lower()
+                    xpth = (meta.get("xpath") or "").lower()
+                    if (hint_lower in desc) or (hint_lower in clss) or (hint_lower in xpth):
                         if meta.get("id"):
-                            best_match = ("ID", meta["id"]); break
-                        elif meta.get("xpath"):
-                            best_match = ("XPATH", meta["xpath"]); break
-            if best_match:
-                hint_to_selector[hint_lower] = best_match
+                            best = ("ID", meta["id"]); break
+                        if meta.get("xpath"):
+                            best = ("XPATH", meta["xpath"]); break
 
-    # By.ID는 손대지 않고, XPATH 중 힌트 포함 패턴만 더 구체적으로 바꿈
-    for hint_lower, (selector_type, selector_value) in hint_to_selector.items():
-        if selector_type == "ID":
-            patterns = [
-                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*contains\([^)]*[\'"][^"\']*{re.escape(hint_lower)}[^"\']*[\'"][^)]*\)[^"\']*["\']\s*\)',
-                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*{re.escape(hint_lower)}[^"\']*["\']\s*\)',
-            ]
-            replacement = f'(By.ID, "{selector_value}")'
-        else:  # XPATH
-            patterns = [
-                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*contains\([^)]*[\'"][^"\']*{re.escape(hint_lower)}[^"\']*[\'"][^)]*\)[^"\']*["\']\s*\)',
-                rf'\(\s*By\.XPATH\s*,\s*["\'][^"\']*{re.escape(hint_lower)}[^"\']*["\']\s*\)',
-            ]
-            replacement = f'(By.XPATH, "{selector_value}")'
+            if best:
+                step_hints_map.setdefault(step_idx, {})[hint_lower] = best
 
-        for pattern in patterns:
-            if re.search(pattern, generated_code, flags=re.IGNORECASE):
-                generated_code = re.sub(pattern, replacement, generated_code, flags=re.IGNORECASE)
-                break
+    # 스텝별로만 치환 적용
+    return replace_hint_per_step(generated_code, step_hints_map)
 
-    return generated_code
 
 # ========================= URL 기반 컨텍스트 전처리(핵심) =========================
 def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
@@ -330,11 +349,12 @@ def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
         return dom_docs
     def belongs(url: str) -> bool:
         return any(p and p in url for p in preferred_paths)
-    kept, others = [], []
+    kept = []
     for d in dom_docs:
         m = getattr(d, "metadata", {}) or {}
         u = (m.get("url") or "")
-        (kept if belongs(u) else others).append(d)
+        if belongs(u):
+            kept.append(d)
     if not kept:
         return dom_docs  # 매칭 없으면 안전하게 원본 유지
     def ord_key(d):
@@ -708,6 +728,7 @@ def run_and_log(file_name: str, cli_args: list[str] | None = None,
     xlsx_path = os.path.join(base_dir, "test_result.xlsx")
     append_result_to_excel(xlsx_path, result)
     print(f"\n🗂️ 자동 실행 결과: {result['status']} (returncode={result['returncode']}, duration={result['duration_sec']}s)")
+    print(f"{result['stderr_tail']}")
     print(f"➡️ 결과가 '{xlsx_path}'에 누적 저장되었습니다.")
     return result
 
@@ -762,7 +783,7 @@ def main():
 
 # [기본 테스트 코드 구조]
 - unittest.TestCase 사용.
-- setUp()은 default_setting.setup()으로 WebDriver 초기화.
+- setUp()은 반드시 default_setting.setup()으로 WebDriver 초기화.
 - case_id는 import 아래:
   => case_id = os.path.basename(os.path.splitext(__file__)[0])
 - 각 주요 단계에 **숫자. 한 줄 요약** 주석.
@@ -941,14 +962,29 @@ def main():
         dedup.append(d)
     dom_docs = dedup
 
+    # --- 컬렉션 전체 문서 페이징 로드 ---
+    def _get_all_docs(coll, batch: int = 500):
+        docs, offset = [], 0
+        while True:
+            got = coll.get(include=["documents"], limit=batch, offset=offset)
+            ids = got.get("ids") or []
+            if not ids:
+                break
+            docs.extend(got.get("documents") or [])
+            offset += len(ids)
+        # LangChain Document와 유사한 얇은 객체로 변환
+        return [type("Doc", (object,), {"metadata": {}, "page_content": d}) for d in docs]
+
     # 8) function_context 로드 (있을 때만)
     def safe_load_collection(persist_dir: str, collection_name: str):
+        """
+        지정 Chroma 디렉토리에서 컬렉션 전체 문서를 페이징으로 로드.
+        실패하면 빈 리스트 반환.
+        """
         try:
             client = chromadb.PersistentClient(path=persist_dir)
             coll = client.get_collection(name=collection_name)
-            raw = coll.get(include=["documents"], limit=200)
-            docs = raw.get("documents") or []
-            return [type("Doc", (object,), {"metadata": {}, "page_content": d}) for d in docs]
+            return _get_all_docs(coll, batch=1000)
         except Exception:
             return []
 
@@ -963,11 +999,6 @@ def main():
     for i, bp in enumerate(step_base_paths, start=1):
         docs_n = len(docs_for_base(dom_docs, bp))
         print(f" - STEP {i:02d}: base_path={bp or '-'} dom_count={docs_n}")
-
-    # 디버그
-    ids = [(getattr(d, "metadata", {}) or {}).get("id")
-           for d in docs_for_base(dom_docs, "/vpes/ProjectModify")]
-    print("in?", "projectBtn" in ids) #특정 id가 포함되었는지 확인 시
 
     # 9) context 구성
     def _fmt(meta, key, maxlen=180):
@@ -986,7 +1017,6 @@ def main():
         if bracket_hints:
             print(f"🎯 STEP {i}에서 대괄호 힌트 발견: {bracket_hints}")
 
-            filtered_docs = step_docs[:]
             step_keywords = extract_keywords(txt)
 
             best_score = 0
@@ -1095,7 +1125,7 @@ def main():
     generated_code = validate_generated_code(generated_code, dom_docs + default_docs, auto_fix=True)
 
     # 12-1) 대괄호 힌트 기반 보정 (fallback 용)
-    generated_code = convert_bracket_hints_to_exact_selectors(generated_code, dom_docs, query)
+    generated_code = convert_bracket_hints_to_exact_selectors_per_step(generated_code, dom_docs, query)
 
     generated_code = postprocess_generated_code(generated_code)
 
@@ -1126,7 +1156,14 @@ def main():
             "당신의 작업: 시나리오의 각 단계가 스크립트 주석에 의해 정확히 구현되었는지 검토하세요.\n\n"
             "검토 기준:\n"
             "- 단계의 의미/핵심 동작 일치 여부 (문구가 조금 달라도 의미가 같으면 OK)\n"
-            "- 누락 단계, 순서 오류, 잘못된 URL 스코프 추정, 동작/셀렉터 불일치는 ISSUE\n\n"
+            "- 누락 단계, 순서 오류, 잘못된 URL 스코프 추정, 동작/셀렉터 불일치는 ISSUE\n"
+            "- **금지 규칙(필수)**: 스크립트의 Step 주석에는 '시나리오에서 명시된 스코프'가 포함되면 안 됩니다. "
+            "스코프는 아래 패턴과 일치하는 문자열을 의미합니다(대소문자 무시):\n"
+            "  • '@URL:'로 시작하는 토큰(예: '@URL:/vpes/...')\n"
+            "  • '/vpes/'로 시작하는 경로(예: '/vpes/Section...')\n"
+            "  • 'http(s)://…/vpes/…' 형태의 전체 URL\n"
+            "절차: [시나리오]에서 위 스코프 토큰들을 모두 추출해 집합 S를 만들고, [스크립트_주석] 안에 S의 어떤 항목이라도 "
+            "등장하면 각각 ISSUE로 기록하세요. 하나라도 발견되면 compliance=false 입니다.\n\n"
             "출력 형식(JSON만 출력):\n"
             "{{\"compliance\": true|false, \"issues\": [\"사유1\", \"사유2\", \"...\"]}}\n\n"
             "[시나리오]\n{scenario}\n\n[스크립트_주석]\n{code_steps}\n"
