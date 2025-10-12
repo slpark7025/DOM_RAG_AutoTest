@@ -11,12 +11,13 @@ import subprocess
 from datetime import datetime
 from urllib.parse import urljoin, urlsplit
 from dotenv import load_dotenv
+from difflib import SequenceMatcher
 
 import chromadb
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableMap, RunnableLambda
+from langchain_core.runnables import RunnableMap
 from langchain_core.output_parsers import StrOutputParser
 
 from validate_selector_ids import validate_generated_code  # ID 정합성 검증 모듈
@@ -70,10 +71,6 @@ def _extract_first_json(s: str) -> str | None:
                     except Exception:
                         start = -1
     return None
-
-def enforce_known_selectors(generated_code: str, dom_docs, question: str, preferred_paths=()):
-    """ID는 절대 건드리지 않음 (현재 스텁)"""
-    return generated_code
 
 def remove_markdown(generated_code: str) -> str:
     return generated_code.replace("```python", "").replace("```", "").strip()
@@ -326,11 +323,6 @@ def convert_bracket_hints_to_exact_selectors(generated_code: str, dom_docs, ques
 
     return generated_code
 
-# ========================= 단계별(URL 스코프) 셀렉터 리라이트 =========================
-def rewrite_selectors_per_step(generated_code: str, dom_docs, step_texts, step_base_paths):
-    """(현재 동작) 생성 코드를 변경하지 않고 그대로 반환"""
-    return generated_code
-
 # ========================= URL 기반 컨텍스트 전처리(핵심) =========================
 def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
     """입력한 URL/베이스경로에 해당하는 문서만 남기고, 경로 순서대로 앞으로 정렬."""
@@ -489,13 +481,122 @@ def retrieve_dom_docs_per_base(
         all_docs.extend(docs_bp)
     return all_docs
 
-# ========================= (추가) 스크립트의 Step 주석 추출 헬퍼 =========================
+# ========================= (추가) 스크립트의 Step 주석/블록 추출 & 매칭 =========================
 def extract_step_comments_from_code(code: str) -> list[str]:
     """
     생성된 코드 안의 '# N. 설명' 형식 주석을 추출하여 'N. 설명' 리스트로 반환
     """
     pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$', re.MULTILINE)
     return [f"{m.group(1)}. {m.group(2).strip()}" for m in pat.finditer(code)]
+
+def normalize_step_title(s: str) -> str:
+    """'1. 저장 버튼 클릭' -> '저장 버튼 클릭' 로 normalize + 소문자/공백정규화"""
+    s = re.sub(r'^\s*\d+\s*\.\s*', '', s.strip())
+    s = re.sub(r'\s+', ' ', s)
+    return s.lower()
+
+def extract_step_blocks_from_code(code: str):
+    """
+    참고 코드에서 각 Step 주석과 그 다음 Step 주석 직전까지의 코드 블록을 추출
+    반환: [{'num':1,'title':'...','code':'...'}...]
+    """
+    lines = code.splitlines()
+    idxs = []
+    pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$')
+    for i, line in enumerate(lines):
+        m = pat.match(line)
+        if m:
+            idxs.append((i, int(m.group(1)), m.group(2).strip()))
+    blocks = []
+    for j, (start, num, title) in enumerate(idxs):
+        end = idxs[j+1][0] if j+1 < len(idxs) else len(lines)
+        # 블록: 주석 라인 포함하여 다음 주석 전까지
+        code_block = "\n".join(lines[start:end]).strip()
+        blocks.append({"num": num, "title": title, "code": code_block})
+    return blocks
+
+def _cosine(v1, v2) -> float:
+    dot = sum(a*b for a,b in zip(v1, v2))
+    n1 = math.sqrt(sum(a*a for a in v1))
+    n2 = math.sqrt(sum(b*b for b in v2))
+    return (dot/(n1*n2)) if (n1 and n2) else 0.0
+
+def text_overlap_score(a: str, b: str) -> float:
+    """단순 토큰 자카드 + 시퀀스매쳐 평균"""
+    ta = set(re.findall(r'[A-Za-z0-9가-힣]+', a.lower()))
+    tb = set(re.findall(r'[A-Za-z0-9가-힣]+', b.lower()))
+    jacc = len(ta & tb) / max(1, len(ta | tb))
+    seq = SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    return (jacc + seq) / 2
+
+def compute_step_embeddings(texts, embedding):
+    vecs = []
+    for t in texts:
+        try:
+            vecs.append(embedding.embed_query(t))
+        except Exception:
+            vecs.append([])
+    return vecs
+
+def match_steps_per_title(user_steps: list[str], ref_blocks: list[dict], embedding, sim_threshold: float = 0.62):
+    """
+    사용자 단계(문구) vs 참고코드 단계(주석 문구) 유사도 매칭.
+    순서 무관. 1:1 그리디 매칭.
+    반환: {user_index(1-based): {'ref_num':..., 'score':..., 'ref_title':..., 'code':...}}
+    """
+    user_norms = [normalize_step_title(s) for s in user_steps]
+    ref_norms  = [normalize_step_title(b['title']) for b in ref_blocks]
+
+    # 임베딩 미리 계산
+    u_vecs = compute_step_embeddings(user_norms, embedding)
+    r_vecs = compute_step_embeddings(ref_norms, embedding)
+
+    # 모든 쌍 점수
+    pairs = []
+    for ui, ut in enumerate(user_norms):
+        for ri, rt in enumerate(ref_norms):
+            emb = _cosine(u_vecs[ui], r_vecs[ri]) if (u_vecs[ui] and r_vecs[ri]) else 0.0
+            overl = text_overlap_score(ut, rt)
+            seq_only = SequenceMatcher(None, ut, rt).ratio()
+            score = 0.5*emb + 0.3*overl + 0.2*seq_only
+            pairs.append((score, ui, ri))
+
+    # 점수 높은 순으로 그리디 매칭
+    pairs.sort(reverse=True, key=lambda x: x[0])
+    used_u, used_r = set(), set()
+    mapping = {}
+    for score, ui, ri in pairs:
+        if score < sim_threshold:
+            break
+        if ui in used_u or ri in used_r:
+            continue
+        used_u.add(ui); used_r.add(ri)
+        b = ref_blocks[ri]
+        mapping[ui+1] = {
+            "ref_num": b["num"],
+            "score": round(score, 3),
+            "ref_title": b["title"],
+            "code": b["code"],
+        }
+    return mapping
+
+def build_per_step_reference_context(user_steps: list[str], step_mapping: dict, base_paths: list[str]) -> str:
+    """
+    각 사용자 단계(1-based)에 대해 매칭된 참고코드 블록을 함께 내보낸다.
+    LLM이 step별로 '그대로 가져다 쓰기' 쉽도록 코드블록 포함.
+    """
+    parts = []
+    if base_paths:
+        parts.append("[REF_BASE_PATH_HINT]\n" + ", ".join(base_paths[:8]))
+    for i, step in enumerate(user_steps, start=1):
+        if i in step_mapping:
+            m = step_mapping[i]
+            parts.append(
+                f"[REF_STEP {i}] matched_from={m['ref_num']} score={m['score']}\n"
+                f"TITLE: {m['ref_title']}\n"
+                "CODE:\n```python\n" + m["code"] + "\n```"
+            )
+    return "\n\n".join(parts)
 
 # ========================= (추가) 테스트 자동 실행 + Excel 로깅 =========================
 def _script_dir() -> str:
@@ -540,8 +641,8 @@ def run_generated_test(file_path: str, timeout_sec: int = 900,
             try:
                 return b.decode("utf-8")  # 1차 시도
             except UnicodeDecodeError:
-                # 로캘로 재시도하되, 깨지는 바이트는 치환
-                return b.decode(locale.getpreferredencoding(False), errors="replace")
+                # 로캘 미가용 환경 대비 간단 폴백
+                return b.decode("cp949", errors="replace")
 
         out = _decode(proc.stdout or b"")
         err = _decode(proc.stderr or b"")
@@ -627,31 +728,37 @@ def main():
     )
     embedding = OpenAIEmbeddings(model="text-embedding-3-large")
 
-    # 4) Prompt 정의
+    # 4) Prompt 정의 — per-step reference 적용
     prompt = PromptTemplate(
-        input_variables=["context", "question", "function_context"],
+        input_variables=["context", "question", "function_context", "step_reference_context"],
         template="""
 # ===== CoT 적용 버전 (출력은 코드만) =====
 단계적으로 내부에서 생각하되, 최종 출력에는 절대 사고 과정을 포함하지 마세요.
 당신은 Selenium 테스트 자동화 코드를 생성하는 전문가입니다.
 
-아래는 웹 페이지의 HTML DOM 요소 목록(context)과
-기능 함수 요약(function_context), 그리고 테스트 시나리오(question)입니다.
+아래는 웹 페이지의 HTML DOM 요소 목록(context),
+기능 함수 요약(function_context),
+테스트 시나리오(question),
+그리고 **각 단계별 참고 코드(step_reference_context)** 입니다.
 
 # [내부 사고 프로세스 — 출력 금지]
-- 이 섹션의 내용, 중간 메모, 근거, 체크리스트는 절대 출력하지 말 것.
 - 내부적으로만 다음 단계를 거쳐 최선의 답을 선택하고, 최종 결과(테스트 코드)만 출력할 것.
   1) 시나리오 파싱 → 단계별 행동으로 분해.
   2) 각 **단계 라인 끝의 '@URL:/vpes/…' 태그**가 있으면 해당 URL 범위의 요소만 사용.
      - 태그가 없으면 DOM context를 사용하지 말고 function_context 함수만 사용.
   3) 함수 재사용 매핑 → function_context를 스캔해 동일/유사 기능 우선 매핑.
-  4) DOM 매핑 → context의 text/description/aria/placeholder와 의미적으로 정합되게 선택.
-  5) 중복 이동 제거: login 후 /vpes 재이동 금지 등.
-  6) 코드 설계: unittest.TestCase 골격 → setUp → TC 메서드 → tearDown → main 순서.
-  7) 주석 규칙: 각 주요 단계에 “숫자. 한 줄 요약”만.
-  8) 형식 점검: import 최상단, case_id 추출, URL 조립 규칙, 선택자 규칙, 함수 재사용 준수.
-  9) 자기검토: 불필요한 send_keys()/click()/driver.get() 제거.
- 10) 최종 산출: 아래 [최종 출력 규칙]을 지켜 오직 코드블록만 출력.
+  4) **per-step 참고 코드 적용 규칙**
+     - step_reference_context에 [REF_STEP i]가 있으면, 현재 i단계 구현 시 해당 CODE를 **가능한 한 그대로 재사용**.
+     - 단, @URL 스코프가 다르거나 의미가 어긋나면 재사용 금지.
+     - By.ID로 지정된 셀렉터는 그대로 유지(변경 금지).
+     - 변수명/헬퍼 호출 정도의 최소 수정만 허용.
+  5) DOM 매핑 → context의 text/description/aria/placeholder와 의미적으로 정합되게 선택.
+  6) 중복 이동 제거: login 후 /vpes 재이동 금지 등.
+  7) 코드 설계: unittest.TestCase 골격 → setUp → TC 메서드 → tearDown → main 순서.
+  8) 주석 규칙: 각 주요 단계에 “숫자. 한 줄 요약”만.
+  9) 형식 점검: import 최상단, case_id 추출, URL 조립 규칙, 선택자 규칙, 함수 재사용 준수.
+ 10) 자기검토: 불필요한 send_keys()/click()/driver.get() 제거.
+ 11) 최종 산출: 아래 [최종 출력 규칙]을 지켜 오직 코드블록만 출력.
 
 # [기본 테스트 코드 구조]
 - unittest.TestCase 사용.
@@ -686,10 +793,6 @@ def main():
 - 단, 단계 텍스트에 **대괄호 힌트([…])가 있는 경우에만**, 그 힌트와 일치하는 요소를 최우선으로 선택한다.
   - 이때도 가능한 경우 ID를 먼저 쓰고, ID가 없으면 XPath를 사용한다.
 
-# [URL 기준 DOM 선택]
-- 시나리오 단계의 @URL을 기준으로 context를 필터링하여 셀렉터 선택.
-- 이동 시나리오가 존재하는 경우에는 function_context 의 move_menu 관련 dom 참고.
-
 # [ASSERT 규칙]
 - page_source 금지. 요소 상태/속성/URL/토스트 등으로 검증.
 
@@ -701,13 +804,12 @@ def main():
 ## 기능 함수 요약 (function_context):
 {function_context}
 
+## 단계별 참고 코드 (step_reference_context):
+{step_reference_context}
+
 ## 테스트 시나리오 (question):
 {question}
 ---
-
-# [URL 기준 DOM 선택]
-- 시나리오 단계의 @URL을 기준으로 context를 필터링하여 셀렉터 선택.
-- ✅ @URL이 없는 단계에서는 DOM context를 사용하지 말고, function_context의 함수만 사용(이동/유틸 호출). 셀렉터 생성 금지.
 
 # [최종 출력 규칙]
 - 오직 **실행 가능한 Python 코드**만 하나의 코드블록으로 출력: ```python ... ```
@@ -792,6 +894,26 @@ def main():
         ]
         selected_dirs = [s for s in selected_dirs if os.path.isdir(s)]
     # else: 분기 제거 — 자동 매칭된 selected_dirs 그대로 사용 (auto_dirs 미정의 버그 제거)
+
+    # ===== (신규) 유사 시나리오 참고 코드 입력 & 단계별 매칭 =====
+    ref_path = input("\n📄 유사 시나리오 Python 테스트 파일 경로(없으면 Enter): ").strip()
+    step_reference_context = ""
+    if ref_path:
+        try:
+            with open(ref_path, "r", encoding="utf-8") as rf:
+                ref_code = rf.read()
+            ref_blocks = extract_step_blocks_from_code(ref_code)
+            # 사용자 스텝의 '제목'(숫자 제거한 텍스트) 목록
+            user_step_titles = [normalize_step_title(s) for s in clean_steps]
+            # 매칭
+            mapping = match_steps_per_title(user_step_titles, ref_blocks, embedding, sim_threshold=0.62)
+            if mapping:
+                step_reference_context = build_per_step_reference_context(clean_steps, mapping, base_paths)
+                print(f"🔗 단계별 참고 코드 적용: {len(mapping)}개 단계 매칭됨 → 프롬프트에 반영합니다.")
+            else:
+                print("[참고 보류] 유사 단계 매칭을 찾지 못했습니다. 주석 문구를 더 가깝게 해보세요.")
+        except Exception as e:
+            print(f"[경고] 참고 코드 로드/분석 실패: {e}")
 
     # URL별로 완전 분리해서 독립 검색 (URL마다 K_PER_BASE개까지)
     dom_docs_lc = retrieve_dom_docs_per_base(
@@ -951,12 +1073,13 @@ def main():
                 print("... (생략)")
                 break
 
-    # 10) LLMChain 실행
+    # 10) LLMChain 실행 — per-step 참고 컨텍스트 포함
     chain = (
         RunnableMap({
             "context": lambda _: context,
             "function_context": lambda _: function_context,
-            "question": lambda _: query
+            "question": lambda _: query,
+            "step_reference_context": lambda _: step_reference_context
         })
         | prompt
         | llm
@@ -973,17 +1096,6 @@ def main():
 
     # 12-1) 대괄호 힌트 기반 보정 (fallback 용)
     generated_code = convert_bracket_hints_to_exact_selectors(generated_code, dom_docs, query)
-
-    # 12-2) 단계별(URL 스코프) 정밀 보정 (현재는 무변경)
-    generated_code = rewrite_selectors_per_step(
-        generated_code,
-        dom_docs,
-        clean_steps,          # URL 제거된 단계 텍스트
-        step_base_paths       # 각 단계에서 추출된 URL
-    )
-
-    # 12-3) 전역 가드(스텁)
-    generated_code = enforce_known_selectors(generated_code, dom_docs, query, preferred_paths=preferred_paths)
 
     generated_code = postprocess_generated_code(generated_code)
 
@@ -1016,7 +1128,7 @@ def main():
             "- 단계의 의미/핵심 동작 일치 여부 (문구가 조금 달라도 의미가 같으면 OK)\n"
             "- 누락 단계, 순서 오류, 잘못된 URL 스코프 추정, 동작/셀렉터 불일치는 ISSUE\n\n"
             "출력 형식(JSON만 출력):\n"
-            "{{\"compliance\": true|false, \"issues\": [\"사유1\", \"사유2\", \"...\"]}}\n\n"  # ← 중괄호 이스케이프
+            "{{\"compliance\": true|false, \"issues\": [\"사유1\", \"사유2\", \"...\"]}}\n\n"
             "[시나리오]\n{scenario}\n\n[스크립트_주석]\n{code_steps}\n"
         ),
     )
@@ -1045,9 +1157,6 @@ def main():
         parsed = json.loads(payload)
     except Exception:
         parsed = None
-
-    # ========================= (신규) 자동 실행 체인 =========================
-    execute_chain = RunnableLambda(lambda _: run_and_log(file_name))
 
     if isinstance(parsed, dict) and parsed.get("compliance") is True:
         print("생성된 스크립트가 시나리오에 부합합니다.")
