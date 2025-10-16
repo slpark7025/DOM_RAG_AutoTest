@@ -1,86 +1,83 @@
 # -*- coding: utf-8 -*-
 # pip install -U langchain langchain-openai langchain-community chromadb tiktoken python-dotenv openpyxl
 
+# =============================================================================
+# 본 파일은 "시나리오 → URL 스코프 기반 RAG → (유사 시나리오 코드 재활용) → LLM 코드 생성
+# → 후처리·검증·보정 → 실행·로깅 → 시나리오-스크립트 적합성 평가"를 일괄 수행하는 파이프라인입니다.
+#
+# 주석 가이드:
+# - 각 함수 앞에는 "무엇을/왜/어떻게" 실행하는지 상세 설명을 기술했습니다.
+# - 복잡한 로직(정규식, AST 교체, RAG 검색, Step 매칭 등) 내부에는 단계별 주석을 추가했습니다.
+# - 기존 로직/코드는 변경하지 않았고, 설명 주석만 추가했습니다.
+# =============================================================================
+
+# ========== [IMPORTS] ==========
+# Standard Library
+import json
+import math
 import os
 import re
-import math
-import json
+import subprocess
 import sys
 import time
-import subprocess
 from datetime import datetime
-from urllib.parse import urljoin, urlsplit
-from dotenv import load_dotenv
 from difflib import SequenceMatcher
+from urllib.parse import urljoin, urlsplit
 
+# Third-Party
 import chromadb
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableMap
-from langchain_core.output_parsers import StrOutputParser
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+# Local
 from validate_selector_ids import validate_generated_code  # ID 정합성 검증 모듈
 
-# ========================= 공통 유틸 =========================
+
+# ========== [CONFIG] ==========
+CHROMA_BASE_DIR = "./chroma"  # JSON별 DB 폴더들이 위치한 루트
+K_PER_BASE = 200  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
+
+
+# ========================= [UTILS: PATH/JSON/TEXT] =========================
 def derive_base_path(s: str) -> str:
-    """전체 URL/상대경로 무엇이든 받아 /vpes/<section> 형태로 변환"""
+    """전체 URL/상대경로 무엇이든 받아 /vpes/<section> 형태로 변환
+    - 목적: 다양한 입력(URL 전체/상대경로 등)에서 테스트 스코프의 기준이 되는 base path를 추출.
+    - 방법:
+      1) urlsplit으로 path만 추출
+      2) path를 '/'로 나누고 빈 세그먼트 제거
+      3) 앞 2개 세그먼트를 조합해 '/vpes/<section>' 같은 형태로 맞춤(>=2개일 때)
+    - 예: 'http://host/a/b/c' → '/a/b'
+    """
     def to_base_path(path: str) -> str:
         parts = [seg for seg in path.split("/") if seg]
         return ("/" + "/".join(parts[:2])) if len(parts) >= 2 else path
     return to_base_path(urlsplit(s).path)
 
+
 def extract_keywords(text):
-    # 포함일반 키워드 - 영문/숫자 + 한글까지
+    """문장 내에서 검색/필터링에 유용한 키워드 후보를 추출
+    - 역할: 한글/영문/숫자/언더스코어/대시 문자열 + 대괄호[...] + 괄호(...)의 내용을 분리 추출
+    - 사용처: 컨텍스트 소스파일 선별 및 대괄호 힌트 강화 등
+    """
     words = [w.lower() for w in re.findall(r'[A-Za-z0-9가-힣_-]+', text)]
-    # 대괄호 안 [ ... ] 내용도 추가 (예: [dropdown-more-btn]
     bracket_hints = [h.lower() for h in re.findall(r'\[([^\]]+)\]', text)]
     paren_hints   = [h.lower() for h in re.findall(r'\(([^)]+)\)', text)]
-
     return words + bracket_hints + paren_hints
 
-def replace_hint_per_step(code: str, step_hints_map: dict[int, dict[str, tuple[str, str]]]) -> str:
-    """
-    step_hints_map: { step_idx: { hint_lower: ("ID"|"XPATH", value), ... }, ... }
-    - 각 스텝 블록(# N. 제목 ~ 다음 스텝 주석 전까지)에서만 치환.
-    - By.ID로 이미 선택된 로케이터는 건드리지 않음.
-    """
-    parts = re.split(r'(^\s*#\s*\d+\.\s*.*$)', code, flags=re.MULTILINE)
-    out, curr_step = [], None
-
-    for chunk in parts:
-        m = re.match(r'^\s*#\s*(\d+)\.\s*', chunk)
-        if m:
-            curr_step = int(m.group(1))
-            out.append(chunk)
-            continue
-
-        if curr_step and curr_step in step_hints_map:
-            repl_map = step_hints_map[curr_step]
-
-            def _sub_xpath(mo: re.Match) -> str:
-                xpath = mo.group(2)
-                xlow = xpath.lower()
-                for hint_lower, (typ, val) in repl_map.items():
-                    if hint_lower in xlow:
-                        if typ == "ID":
-                            return f'(By.ID, "{val}")'
-                        else:
-                            return f'(By.XPATH, "{val}")'
-                return mo.group(0)
-
-            # By.XPATH 만 대상으로, 힌트 단어가 포함된 경우에만 치환
-            chunk = re.sub(r'(\(\s*By\.XPATH\s*,\s*["\'])(.+?)(["\']\s*\))',
-                           _sub_xpath, chunk, flags=re.IGNORECASE | re.DOTALL)
-
-        out.append(chunk)
-
-    return ''.join(out)
 
 def _extract_first_json(s: str) -> str | None:
+    """임의의 문자열에서 첫 번째 '유효한 JSON'을 찾아 반환
+    - 1) 코드펜스 내부 블록이 JSON이면 그대로 사용
+    - 2) 전체 문자열을 스캔하여 가장 바깥쪽 괄호 깊이를 추적하며 첫 유효 JSON 객체를 검증 반환
+    - 실패 시 None
+    """
     s = s.strip()
 
-    # 1) 코드펜스(개행 유무/언어태그 변형 모두 허용)
+    # 1) 코드펜스(언어태그 유무 무관) 우선 탐색
     m = re.search(r"```(?:\s*[a-zA-Z0-9_-]+)?\s*\n?([\s\S]*?)\n?```", s)
     if m:
         block = m.group(1).strip()
@@ -91,7 +88,7 @@ def _extract_first_json(s: str) -> str | None:
             except Exception:
                 pass
 
-    # 2) 첫 번째 유효한 { ... } 덩어리 스캔(중첩 괄호 허용)
+    # 2) 괄호 깊이로 { ... } 블록을 추적하면서 유효성 검사
     depth = 0; start = -1
     for i, ch in enumerate(s):
         if ch == "{":
@@ -110,11 +107,34 @@ def _extract_first_json(s: str) -> str | None:
                         start = -1
     return None
 
+
 def remove_markdown(generated_code: str) -> str:
+    """코드펜스 마크다운 제거
+    - LLM 출력이 ```python ... ``` 형태일 때 코드만 추출해 후처리하기 위한 정리 유틸
+    """
     return generated_code.replace("```python", "").replace("```", "").strip()
 
+
+def ensure_import(g: str, line: str) -> str:
+    """특정 import 라인이 없으면 상단에 삽입
+    - 단순 포함 체크(line in g) 방식으로, 동일한 기능의 다른 import 변형은 감지하지 않음(의도된 간결성)
+    """
+    if line in g:
+        return g
+    lines = g.splitlines(True)
+    insert_at = 0
+    if lines and (lines[0].startswith("#!") or "coding" in lines[0]):
+        insert_at = 1
+    return "".join(lines[:insert_at] + [line + "\n"] + lines[insert_at:])
+
+
+# ========================= [UTILS: CODE PATCH/POST-PROC] =========================
 def insert_sleep_before_assert(generated_code: str) -> str:
-    # 첫 assert/ self.assert/ pytest-style 'assert ' 앞에 sleep(2) 한 번만 삽입 - flaky 방지 목적..
+    """첫 assert 앞에 sleep(2)를 1회 삽입(안티-플레이키)
+    - 목적: 렌더 지연 등으로 인한 비결정적 실패 감소
+    - 로직: 멀티라인 정규식으로 첫 assert/self.assert/pytest assert 위치를 찾아 그 직전에 sleep 추가
+    - 'from time import sleep' 누락 시 자동 삽입
+    """
     pat = re.compile(r'^(\s*)(?:self\.)?assert', re.MULTILINE)
     m = pat.search(generated_code)
     if not m:
@@ -125,12 +145,18 @@ def insert_sleep_before_assert(generated_code: str) -> str:
         g = "from time import sleep\n" + g
     return g
 
+
 def patch_unittest_main(generated_code: str) -> str:
+    """unittest 진입부(main) 인자/exit 동작 표준화
+    - 목적: 노트북/런타임과의 호환(첫 인자 무시, exit=False) 확보
+    - 방법: '__main__' 블록의 unittest.main() 호출 패턴 치환
+    """
     return re.sub(
         r'if __name__ == ["\']__main__["\']:\s*unittest\.main\(\)',
         'if __name__ == "__main__":\n    unittest.main(argv=[\'first-arg-is-ignored\'], exit=False)',
         generated_code
     )
+
 
 def patch_teardown(generated_code: str) -> str:
     """
@@ -139,6 +165,11 @@ def patch_teardown(generated_code: str) -> str:
     - __main__ 블록 등 함수 밖 코드는 절대 건드리지 않음
     - tearDown이 없으면 unittest.TestCase 클래스 직후에 삽입
     - 각 행 사이 빈 줄(공백 행) 없이 출력
+
+    구현 상세:
+    1) 우선 AST 파싱으로 def tearDown 위치/범위를 정확히 탐지한 뒤 교체
+    2) AST 실패 시 정규식 fallback: def 라인과 그보다 깊은 들여쓰기 라인들을 '한 블록'으로 간주해 교체
+    3) tearDown 자체가 없는 경우, unittest.TestCase 상속 클래스 선언 직후에 표준 블록 삽입
     """
     import ast
 
@@ -188,7 +219,6 @@ def patch_teardown(generated_code: str) -> str:
         pass
 
     # 2) 정규식 fallback: def tearDown 라인과 그 '더 깊은 들여쓰기 라인들' 전체를 교체
-    #  - 함수 본문: (def 들여쓰기보다 공백이 더 많은 라인들) 또는 완전 빈 줄
     pat = re.compile(
         r'^([ \t]*)def\s+tearDown\s*\(\s*self\s*\)\s*:\s*\r?\n'   # def 라인
         r'('
@@ -227,21 +257,12 @@ def patch_teardown(generated_code: str) -> str:
     return generated_code
 
 
-def ensure_import(g: str, line: str) -> str:
-    if line in g:
-        return g
-    lines = g.splitlines(True)
-    insert_at = 0
-    if lines and (lines[0].startswith("#!") or "coding" in lines[0]):
-        insert_at = 1
-    return "".join(lines[:insert_at] + [line + "\n"] + lines[insert_at:])
-
-# 저장된 dom xpath에 /[document]가 종종 섞여 나올 때, /[document] 프리픽스를 지워서 Selenium이 이해할 수 있는 형태로 변경
 def strip_document_prefix_xpaths(g: str) -> str:
     """
-    (By.XPATH, "...") 형태의 문자열 중
-    XPath가 '/[document]/' 또는 '/[document][숫자]/' 로 시작하면 그 프리픽스만 제거.
-    예) '/[document][1]/html[1]/body[1]/...' -> '/html[1]/body[1]/...'
+    저장된 DOM XPath에 '/[document]' 프리픽스가 있을 때 Selenium 호환을 위해 제거
+    - 대상: (By.XPATH, "..."), .find_element(By.XPATH,"..."), .find_elements(By.XPATH,"...")
+    - 내부 치환은 따옴표 안의 XPath 문자열 앞쪽 '/[document][n]/' 패턴만 제거
+    - 예) '/[document][1]/html[1]/body[1]/...' → '/html[1]/body[1]/...'
     """
     # 1) 문자열 앞의 '/[document][n]/' 패턴만 없애는 헬퍼
     def _fix(xp: str) -> str:
@@ -264,7 +285,13 @@ def strip_document_prefix_xpaths(g: str) -> str:
 
     return text
 
+
 def postprocess_generated_code(generated_code: str) -> str:
+    """LLM 생성 코드에 대한 표준 후처리 파이프라인
+    - 코드펜스 제거 → anti-flaky sleep → 표준 tearDown 교체 → unittest.main 패치
+      → 필수 import 보강 → '/[document]' XPath 프리픽스 제거
+    - 목적: 실행 안정성과 팀 코딩 규약 준수 확보
+    """
     generated_code = remove_markdown(generated_code)
     generated_code = insert_sleep_before_assert(generated_code)
     generated_code = patch_teardown(generated_code)
@@ -280,12 +307,405 @@ def postprocess_generated_code(generated_code: str) -> str:
     generated_code = strip_document_prefix_xpaths(generated_code)
     return generated_code
 
-# ====== 대괄호 힌트 기반 보정 함수 ======
+
+# ========================= [URL & DOM FILTERING] =========================
+def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
+    """입력한 URL/베이스경로에 해당하는 문서만 남기고, 경로 순서대로 앞으로 정렬.
+    - 목적: 시나리오 단계의 URL 스코프에 맞는 DOM 후보를 우선 노출
+    - 매칭 실패 시 원본 유지(보수적 전략)
+    """
+    if not preferred_paths:
+        return dom_docs
+    def belongs(url: str) -> bool:
+        return any(p and p in url for p in preferred_paths)
+    kept = []
+    for d in dom_docs:
+        m = getattr(d, "metadata", {}) or {}
+        u = (m.get("url") or "")
+        if belongs(u):
+            kept.append(d)
+    if not kept:
+        return dom_docs  # 매칭 없으면 안전하게 원본 유지
+    def ord_key(d):
+        u = (getattr(d, "metadata", {}) or {}).get("url", "")
+        for i, p in enumerate(preferred_paths):
+            if p and p in u:
+                return i
+        return len(preferred_paths) + 1
+    kept.sort(key=ord_key)
+    return kept
+
+
+def docs_for_base(dom_docs, base_path: str):
+    """특정 단계의 base_path에 해당하는 문서만 반환(없으면 빈 목록).
+    - 단일 단계 컨텍스트 축소용
+    """
+    if not base_path:
+        return []
+    picked = []
+    for d in dom_docs:
+        m = getattr(d, "metadata", {}) or {}
+        u = m.get("url") or ""
+        if base_path in u:
+            picked.append(d)
+    return picked
+
+
+def parse_step_urls(lines):
+    """
+    각 단계 문자열에서 http.../vpes/... 또는 /vpes/... URL을 추출.
+    반환: (clean_steps, step_base_paths, url_tags_for_prompt)
+      - clean_steps: URL 제거 후의 단계 텍스트(LLM에게 행동 문구만 전달)
+      - step_base_paths: 각 단계가 참조할 base_path(/vpes/<section>)
+         · 해당 줄에 URL이 있으면 그걸 사용, 없으면 None (직전 URL 계승 금지 — 명시적 스코프만 인정)
+      - url_tags_for_prompt: 각 단계 뒤에 붙일 '@URL:/vpes/...' 태그 문자열
+    구현:
+      - URL 정규식으로 라인에서 URL 찾아내고, base_path로 정규화한 뒤 라인에서는 제거
+      - 프롬프트 구성 시 '@URL:...' 꼬리표로 재부착(컨텍스트 선별용)
+    """
+    url_pat = re.compile(r'((?:https?://[^\s,)\]　]+)|(?:/vpes/[^\s,)\]　]+))', re.IGNORECASE)
+    clean_steps = []; step_base_paths = []; url_tags = []
+    for s_raw in lines:
+        m = url_pat.search(s_raw)
+        if m:
+            u = m.group(1).strip()
+            bp = derive_base_path(u) or u
+            s2 = (s_raw[:m.start()] + s_raw[m.end():]).strip().rstrip(',').rstrip()
+            clean_steps.append(s2)
+            step_base_paths.append(bp)
+            url_tags.append(f' @URL:{bp}')
+        else:
+            clean_steps.append(s_raw.strip())
+            step_base_paths.append(None)
+            url_tags.append('')
+    return clean_steps, step_base_paths, url_tags
+
+
+# ========================= [CHROMA: SELECT/RETRIEVE] =========================
+def select_chroma_dirs(base_dir: str, user_inputs: list[str]) -> list[str]:
+    """사용자 입력(베이스경로/키워드)와 일치하는 폴더만 선별
+    - 목적: RAG 대상 DB를 줄여 검색 비용/잡음 감소
+    - 전략: 폴더명 소문자 포함 여부(any)
+    """
+    if not os.path.isdir(base_dir):
+        return []
+    keys = [u.strip().lower() for u in user_inputs if u and u.strip()]
+    if not keys:
+        return []
+    selected = []
+    for name in os.listdir(base_dir):
+        p = os.path.join(base_dir, name)
+        if not os.path.isdir(p):
+            continue
+        low = name.lower()
+        if any(k in low for k in keys):
+            selected.append(p)
+    return selected
+
+
+def retrieve_from_selected_dirs(
+        selected_dirs: list[str],
+        query: str,
+        embedding,
+        k_total: int = 200,
+        mmr_fetch_factor: int = 5,
+        mmr_lambda: float = 0.35
+):
+    """
+    선택된 여러 DB 폴더 각각에서 MMR 검색을 수행하고 결과를 합칩니다.
+    - 각 DB당 균등 할당(per_db)으로 과도한 편중 방지
+    - fetch_k는 per_db * mmr_fetch_factor (상한 1000)
+    - 실패한 DB는 경고 후 건너뜀(부분내성)
+    반환: LangChain Document들의 합치 목록 상위 k_total개
+    """
+    if not selected_dirs:
+        return []
+    per_db = max(1, math.ceil(k_total / len(selected_dirs)))
+    fetch_k = min(per_db * mmr_fetch_factor, 1000)
+    all_docs = []
+    for db_dir in selected_dirs:
+        try:
+            client = chromadb.PersistentClient(path=db_dir)
+            vs = Chroma(
+                client=client,
+                collection_name="dom_elements",
+                embedding_function=embedding,
+            )
+            docs = vs.max_marginal_relevance_search(
+                query=query,
+                k=per_db,
+                fetch_k=fetch_k,
+                lambda_mult=mmr_lambda
+            )
+            all_docs.extend(docs)
+        except Exception as e:
+            print(f"[경고] DB 접근 실패, 건너뜀: {db_dir} ({e})")
+    return all_docs[:k_total]
+
+
+def retrieve_dom_docs_per_base(
+    base_paths: list[str],
+    clean_steps: list[str],
+    step_base_paths: list[str],
+    embedding,
+    selected_dirs: list[str],
+):
+    """베이스 경로별로 쿼리를 구성해 독립적으로 MMR 검색을 수행
+    - 각 base_path에 연관된 단계 텍스트만 묶어 query_for_bp로 사용(없으면 bp 자체를 쿼리)
+    - selected_dirs 중 base_path의 마지막 세그먼트가 포함된 폴더를 우선 사용, 없으면 전체로 fallback
+    - 결과를 모두 합쳐 반환
+    """
+    from collections import defaultdict
+    all_docs = []
+    steps_by_base = defaultdict(list)
+    for txt, bp in zip(clean_steps, step_base_paths):
+        if bp:
+            steps_by_base[bp].append(txt)
+
+    for bp in base_paths:
+        if not bp:
+            continue
+        dirs_for_bp = selected_dirs[:]
+        if not dirs_for_bp:
+            continue
+        key_fragment = os.path.basename(bp).lower()
+        dirs_for_bp = [d for d in dirs_for_bp if key_fragment in os.path.basename(d).lower()]
+        if not dirs_for_bp:
+            dirs_for_bp = selected_dirs  # 🔁 fallback
+        query_for_bp = "\n".join(steps_by_base.get(bp, [])) or bp
+        docs_bp = retrieve_from_selected_dirs(
+            selected_dirs=dirs_for_bp,
+            embedding=embedding,
+            query=query_for_bp,
+            k_total=K_PER_BASE,
+            mmr_fetch_factor=5,
+            mmr_lambda=0.35,
+        )
+        all_docs.extend(docs_bp)
+    return all_docs
+
+
+def _get_all_docs(coll, batch: int = 500):
+    """Chroma 컬렉션에서 전체 document를 페이징으로 수집
+    - include=["documents"]로 문서만 가져오고, 간단한 Doc 객체로 변환
+    """
+    docs, offset = [], 0
+    while True:
+        got = coll.get(include=["documents"], limit=batch, offset=offset)
+        ids = got.get("ids") or []
+        if not ids:
+            break
+        docs.extend(got.get("documents") or [])
+        offset += len(ids)
+    return [type("Doc", (object,), {"metadata": {}, "page_content": d}) for d in docs]
+
+
+def safe_load_collection(persist_dir: str, collection_name: str):
+    """
+    지정 Chroma 디렉토리에서 컬렉션 전체 문서를 페이징으로 로드.
+    - 실패해도 예외를 전파하지 않고 빈 리스트 반환(호출부 연속성 유지)
+    """
+    try:
+        client = chromadb.PersistentClient(path=persist_dir)
+        coll = client.get_collection(name=collection_name)
+        return _get_all_docs(coll, batch=1000)
+    except Exception:
+        return []
+
+
+# ========================= [STEP: EXTRACT/MATCH/REF] =========================
+def extract_step_comments_from_code(code: str) -> list[str]:
+    """생성된 코드 안의 '# N. 설명' 형식 주석을 추출하여 'N. 설명' 리스트로 반환
+    - 시나리오-스크립트 적합성 비교를 위한 요약용
+    """
+    pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$', re.MULTILINE)
+    return [f"{m.group(1)}. {m.group(2).strip()}" for m in pat.finditer(code)]
+
+
+def normalize_step_title(s: str) -> str:
+    """스텝 제목 포맷 정규화
+    - '1. 저장 버튼 클릭' → '저장 버튼 클릭'
+    - 소문자/다중 공백 정규화
+    - 참고코드 매칭의 견고성 제고
+    """
+    s = re.sub(r'^\s*\d+\s*\.\s*', '', s.strip())
+    s = re.sub(r'\s+', ' ', s)
+    return s.lower()
+
+
+def extract_step_blocks_from_code(code: str):
+    """참고 코드에서 각 Step 주석과 그 다음 Step 주석 직전까지의 '코드 블록' 추출
+    - 반환: [{'num':1,'title':'...','code':'...'}...]
+    - 방법: 라인 인덱스를 모두 모아 구간별 슬라이싱
+    """
+    lines = code.splitlines()
+    idxs = []
+    pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$')
+    for i, line in enumerate(lines):
+        m = pat.match(line)
+        if m:
+            idxs.append((i, int(m.group(1)), m.group(2).strip()))
+    blocks = []
+    for j, (start, num, title) in enumerate(idxs):
+        end = idxs[j+1][0] if j+1 < len(idxs) else len(lines)
+        code_block = "\n".join(lines[start:end]).strip()
+        blocks.append({"num": num, "title": title, "code": code_block})
+    return blocks
+
+
+def _cosine(v1, v2) -> float:
+    """코사인 유사도(간단 구현). 벡터가 비었을 경우 0"""
+    dot = sum(a*b for a,b in zip(v1, v2))
+    n1 = math.sqrt(sum(a*a for a in v1))
+    n2 = math.sqrt(sum(b*b for b in v2))
+    return (dot/(n1*n2)) if (n1 and n2) else 0.0
+
+
+def text_overlap_score(a: str, b: str) -> float:
+    """텍스트 유사도(자카드 + 시퀀스매쳐 평균)
+    - 정규화/토큰화 후 겹치는 정도와 편집적 유사도를 결합
+    """
+    ta = set(re.findall(r'[A-Za-z0-9가-힣]+', a.lower()))
+    tb = set(re.findall(r'[A-Za-z0-9가-힣]+', b.lower()))
+    jacc = len(ta & tb) / max(1, len(ta | tb))
+    seq = SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    return (jacc + seq) / 2
+
+
+def compute_step_embeddings(texts, embedding):
+    """스텝 제목 목록에 대한 임베딩 계산
+    - OpenAIEmbeddings.embed_query를 개별 호출(간단 구현)
+    - 실패 시 빈 벡터 수용(부분내성)
+    """
+    vecs = []
+    for t in texts:
+        try:
+            vecs.append(embedding.embed_query(t))
+        except Exception:
+            vecs.append([])
+    return vecs
+
+
+def match_steps_per_title(user_steps: list[str], ref_blocks: list[dict], embedding, sim_threshold: float = 0.62):
+    """
+    사용자 단계(문구) vs 참고코드 단계(주석 문구) 유사도 매칭.
+    - 순서 무관, 1:1 그리디 매칭
+    - 스코어: 0.5*임베딩코사인 + 0.3*텍스트겹침 + 0.2*시퀀스유사
+    - sim_threshold 이상인 페어만 채택
+    반환: {user_index(1-based): {'ref_num':..., 'score':..., 'ref_title':..., 'code':...}}
+    """
+    user_norms = [normalize_step_title(s) for s in user_steps]
+    ref_norms  = [normalize_step_title(b['title']) for b in ref_blocks]
+
+    # 임베딩 미리 계산
+    u_vecs = compute_step_embeddings(user_norms, embedding)
+    r_vecs = compute_step_embeddings(ref_norms, embedding)
+
+    # 모든 쌍 점수 계산
+    pairs = []
+    for ui, ut in enumerate(user_norms):
+        for ri, rt in enumerate(ref_norms):
+            emb = _cosine(u_vecs[ui], r_vecs[ri]) if (u_vecs[ui] and r_vecs[ri]) else 0.0
+            overl = text_overlap_score(ut, rt)
+            seq_only = SequenceMatcher(None, ut, rt).ratio()
+            score = 0.5*emb + 0.3*overl + 0.2*seq_only
+            pairs.append((score, ui, ri))
+
+    # 점수 높은 순으로 그리디 매칭
+    pairs.sort(reverse=True, key=lambda x: x[0])
+    used_u, used_r = set(), set()
+    mapping = {}
+    for score, ui, ri in pairs:
+        if score < sim_threshold:
+            break
+        if ui in used_u or ri in used_r:
+            continue
+        used_u.add(ui); used_r.add(ri)
+        b = ref_blocks[ri]
+        mapping[ui+1] = {
+            "ref_num": b["num"],
+            "score": round(score, 3),
+            "ref_title": b["title"],
+            "code": b["code"],
+        }
+    return mapping
+
+
+def build_per_step_reference_context(user_steps: list[str], step_mapping: dict, base_paths: list[str]) -> str:
+    """
+    LLM 프롬프트에 넣을 '단계별 참고 코드' 텍스트를 구성
+    - 각 사용자 단계에 대해 매칭된 참고 코드를 CODE 블록으로 제공
+    - URL 힌트([REF_BASE_PATH_HINT])는 선택적으로 제공
+    """
+    parts = []
+    if base_paths:
+        parts.append("[REF_BASE_PATH_HINT]\n" + ", ".join(base_paths[:8]))
+    for i, step in enumerate(user_steps, start=1):
+        if i in step_mapping:
+            m = step_mapping[i]
+            parts.append(
+                f"[REF_STEP {i}] matched_from={m['ref_num']} score={m['score']}\n"
+                f"TITLE: {m['ref_title']}\n"
+                "CODE:\n```python\n" + m["code"] + "\n```"
+            )
+    return "\n\n".join(parts)
+
+
+# ========================= [HINT-BASED SELECTOR PATCH] =========================
+def replace_hint_per_step(code: str, step_hints_map: dict[int, dict[str, tuple[str, str]]]) -> str:
+    """
+    대괄호 힌트 기반 선택자 치환을 '스텝별 코드 블록'에 한정하여 수행
+    - step_hints_map: { step_idx: { hint_lower: ("ID"|"XPATH", value), ... }, ... }+
+    - 대상: 각 스텝(# N. ...) 주석부터 다음 스텝 직전까지
+    - 원칙: By.ID로 이미 선택된 로케이터는 유지, By.XPATH만 힌트로 교체(조건 충족 시)
+    구현:
+      - 정규식으로 스텝별로 코드 블록을 분할
+      - 해당 스텝의 힌트 사전을 찾고, XPATH 튜플 문자열을 검사하여 힌트 키워드 포함 시 치환
+    """
+    parts = re.split(r'(^\s*#\s*\d+\.\s*.*$)', code, flags=re.MULTILINE)
+    out, curr_step = [], None
+
+    for chunk in parts:
+        m = re.match(r'^\s*#\s*(\d+)\.\s*', chunk)
+        if m:
+            curr_step = int(m.group(1))
+            out.append(chunk)
+            continue
+
+        if curr_step and curr_step in step_hints_map:
+            repl_map = step_hints_map[curr_step]
+
+            def _sub_xpath(mo: re.Match) -> str:
+                xpath = mo.group(2)
+                xlow = xpath.lower()
+                for hint_lower, (typ, val) in repl_map.items():
+                    if hint_lower in xlow:
+                        if typ == "ID":
+                            return f'(By.ID, "{val}")'
+                        else:
+                            return f'(By.XPATH, "{val}")'
+                return mo.group(0)
+
+            # By.XPATH 만 대상으로, 힌트 단어가 포함된 경우에만 치환
+            chunk = re.sub(r'(\(\s*By\.XPATH\s*,\s*["\'])(.+?)(["\']\s*\))',
+                           _sub_xpath, chunk, flags=re.IGNORECASE | re.DOTALL)
+
+        out.append(chunk)
+
+    return ''.join(out)
+
+
 def convert_bracket_hints_to_exact_selectors_per_step(generated_code: str, dom_docs, question: str) -> str:
     """
-    question: '1. ... @URL:/vpes/SectionA\n2. ... @URL:/vpes/SectionB ...' 형태
-    - 각 스텝 라인의 [힌트]를 추출하고, 해당 스텝의 @URL 스코프 내 dom_docs에서
-      ID 또는 XPATH를 찾아 스텝 블록에만 치환.
+    '[힌트]'가 포함된 시나리오 각 단계에 대해, 해당 스텝의 @URL 스코프 DOM 안에서
+    힌트와 일치하는 요소(ID 우선, 없으면 XPATH)를 찾아 선택자 치환(스텝 블록 범위 내).
+    - question: '1. ... @URL:/vpes/SectionA\n2. ... @URL:/vpes/SectionB ...' 형태의 문장
+    - 흐름:
+      1) question을 줄단위로 파싱 → (스텝번호, 텍스트, @URL 스코프) 추출
+      2) 스코프에 맞는 DOM 문서 집합을 선별
+      3) 각 힌트에 대해 (태그일치 → desc/class/xpath 포함) 우선순위로 가장 좋은 로케이터 선택
+      4) 스텝별 힌트 맵(step_hints_map)을 구성
+      5) replace_hint_per_step로 해당 스텝 코드 블록에만 치환 적용
     """
     step_hints_map: dict[int, dict[str, tuple[str, str]]] = {}
     lines = [ln for ln in (question or "").splitlines() if ln.strip()]
@@ -342,296 +762,27 @@ def convert_bracket_hints_to_exact_selectors_per_step(generated_code: str, dom_d
     return replace_hint_per_step(generated_code, step_hints_map)
 
 
-# ========================= URL 기반 컨텍스트 전처리(핵심) =========================
-def filter_and_order_docs_by_urls(dom_docs, preferred_paths):
-    """입력한 URL/베이스경로에 해당하는 문서만 남기고, 경로 순서대로 앞으로 정렬."""
-    if not preferred_paths:
-        return dom_docs
-    def belongs(url: str) -> bool:
-        return any(p and p in url for p in preferred_paths)
-    kept = []
-    for d in dom_docs:
-        m = getattr(d, "metadata", {}) or {}
-        u = (m.get("url") or "")
-        if belongs(u):
-            kept.append(d)
-    if not kept:
-        return dom_docs  # 매칭 없으면 안전하게 원본 유지
-    def ord_key(d):
-        u = (getattr(d, "metadata", {}) or {}).get("url", "")
-        for i, p in enumerate(preferred_paths):
-            if p and p in u:
-                return i
-        return len(preferred_paths) + 1
-    kept.sort(key=ord_key)
-    return kept
-
-def docs_for_base(dom_docs, base_path: str):
-    """특정 단계의 base_path에 해당하는 문서만 반환(없으면 빈 목록)."""
-    if not base_path:
-        return []
-    picked = []
-    for d in dom_docs:
-        m = getattr(d, "metadata", {}) or {}
-        u = m.get("url") or ""
-        if base_path in u:
-            picked.append(d)
-    return picked
-
-# ========================= 단계 텍스트에서 URL 추출 =========================
-def parse_step_urls(lines):
-    """
-    각 단계 문자열에서 http.../vpes/... 또는 /vpes/... URL을 추출.
-    반환: (clean_steps, step_base_paths, url_tags_for_prompt)
-      - clean_steps: URL 제거 후의 단계 텍스트
-      - step_base_paths: 각 단계가 참조할 base_path(/vpes/<section>)
-         · 해당 줄에 URL이 있으면 그걸 사용, 없으면 None (직전 URL 계승 금지)
-      - url_tags_for_prompt: 각 단계 뒤에 붙일 '@URL:/vpes/...' 태그 리스트
-    """
-    url_pat = re.compile(r'((?:https?://[^\s,)\]　]+)|(?:/vpes/[^\s,)\]　]+))', re.IGNORECASE)
-    clean_steps = []; step_base_paths = []; url_tags = []
-    for s_raw in lines:
-        m = url_pat.search(s_raw)
-        if m:
-            u = m.group(1).strip()
-            bp = derive_base_path(u) or u
-            s2 = (s_raw[:m.start()] + s_raw[m.end():]).strip().rstrip(',').rstrip()
-            clean_steps.append(s2)
-            step_base_paths.append(bp)
-            url_tags.append(f' @URL:{bp}')
-        else:
-            clean_steps.append(s_raw.strip())
-            step_base_paths.append(None)
-            url_tags.append('')
-    return clean_steps, step_base_paths, url_tags
-
-# ========================= 선택 DB 라우팅 & 검색 =========================
-CHROMA_BASE_DIR = "./chroma"  # JSON별 DB 폴더들이 위치한 루트
-
-def select_chroma_dirs(base_dir: str, user_inputs: list[str]) -> list[str]:
-    if not os.path.isdir(base_dir):
-        return []
-    keys = [u.strip().lower() for u in user_inputs if u and u.strip()]
-    if not keys:
-        return []
-    selected = []
-    for name in os.listdir(base_dir):
-        p = os.path.join(base_dir, name)
-        if not os.path.isdir(p):
-            continue
-        low = name.lower()
-        if any(k in low for k in keys):
-            selected.append(p)
-    return selected
-
-def retrieve_from_selected_dirs(
-        selected_dirs: list[str],
-        query: str,
-        embedding,
-        k_total: int = 200,
-        mmr_fetch_factor: int = 5,
-        mmr_lambda: float = 0.35
-):
-    """
-    선택된 여러 DB 폴더 각각에서 MMR 검색을 수행하고 결과를 합칩니다.
-    각 DB당 k를 균등 분배(올림)하여 과도한 편중을 방지합니다.
-    """
-    if not selected_dirs:
-        return []
-    per_db = max(1, math.ceil(k_total / len(selected_dirs)))
-    fetch_k = min(per_db * mmr_fetch_factor, 1000)
-    all_docs = []
-    for db_dir in selected_dirs:
-        try:
-            client = chromadb.PersistentClient(path=db_dir)
-            vs = Chroma(
-                client=client,
-                collection_name="dom_elements",
-                embedding_function=embedding,
-            )
-            docs = vs.max_marginal_relevance_search(
-                query=query,
-                k=per_db,
-                fetch_k=fetch_k,
-                lambda_mult=mmr_lambda
-            )
-            all_docs.extend(docs)
-        except Exception as e:
-            print(f"[경고] DB 접근 실패, 건너뜀: {db_dir} ({e})")
-    return all_docs[:k_total]
-
-# --- URL별 독립 검색 상한 ---
-K_PER_BASE = 200  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
-
-def retrieve_dom_docs_per_base(
-    base_paths: list[str],
-    clean_steps: list[str],
-    step_base_paths: list[str],
-    embedding,
-    selected_dirs: list[str],
-):
-    from collections import defaultdict
-    all_docs = []
-    # base_path -> 해당 URL을 참조하는 스텝 텍스트만 모은 쿼리
-    steps_by_base = defaultdict(list)
-    for txt, bp in zip(clean_steps, step_base_paths):
-        if bp:
-            steps_by_base[bp].append(txt)
-
-    # 입력된 base_paths 순서대로 처리
-    for bp in base_paths:
-        if not bp:
-            continue
-        dirs_for_bp = selected_dirs[:]
-        if not dirs_for_bp:
-            continue
-        key_fragment = os.path.basename(bp).lower()
-        dirs_for_bp = [d for d in dirs_for_bp if key_fragment in os.path.basename(d).lower()]
-        if not dirs_for_bp:
-            dirs_for_bp = selected_dirs  # 🔁 fallback
-        query_for_bp = "\n".join(steps_by_base.get(bp, [])) or bp
-        docs_bp = retrieve_from_selected_dirs(
-            selected_dirs=dirs_for_bp,
-            embedding=embedding,
-            query=query_for_bp,
-            k_total=K_PER_BASE,
-            mmr_fetch_factor=5,
-            mmr_lambda=0.35,
-        )
-        all_docs.extend(docs_bp)
-    return all_docs
-
-# ========================= (추가) 스크립트의 Step 주석/블록 추출 & 매칭 =========================
-def extract_step_comments_from_code(code: str) -> list[str]:
-    """
-    생성된 코드 안의 '# N. 설명' 형식 주석을 추출하여 'N. 설명' 리스트로 반환
-    """
-    pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$', re.MULTILINE)
-    return [f"{m.group(1)}. {m.group(2).strip()}" for m in pat.finditer(code)]
-
-def normalize_step_title(s: str) -> str:
-    """'1. 저장 버튼 클릭' -> '저장 버튼 클릭' 로 normalize + 소문자/공백정규화"""
-    s = re.sub(r'^\s*\d+\s*\.\s*', '', s.strip())
-    s = re.sub(r'\s+', ' ', s)
-    return s.lower()
-
-def extract_step_blocks_from_code(code: str):
-    """
-    참고 코드에서 각 Step 주석과 그 다음 Step 주석 직전까지의 코드 블록을 추출
-    반환: [{'num':1,'title':'...','code':'...'}...]
-    """
-    lines = code.splitlines()
-    idxs = []
-    pat = re.compile(r'^\s*#\s*(\d+)\.\s*(.+?)\s*$')
-    for i, line in enumerate(lines):
-        m = pat.match(line)
-        if m:
-            idxs.append((i, int(m.group(1)), m.group(2).strip()))
-    blocks = []
-    for j, (start, num, title) in enumerate(idxs):
-        end = idxs[j+1][0] if j+1 < len(idxs) else len(lines)
-        # 블록: 주석 라인 포함하여 다음 주석 전까지
-        code_block = "\n".join(lines[start:end]).strip()
-        blocks.append({"num": num, "title": title, "code": code_block})
-    return blocks
-
-def _cosine(v1, v2) -> float:
-    dot = sum(a*b for a,b in zip(v1, v2))
-    n1 = math.sqrt(sum(a*a for a in v1))
-    n2 = math.sqrt(sum(b*b for b in v2))
-    return (dot/(n1*n2)) if (n1 and n2) else 0.0
-
-def text_overlap_score(a: str, b: str) -> float:
-    """단순 토큰 자카드 + 시퀀스매쳐 평균"""
-    ta = set(re.findall(r'[A-Za-z0-9가-힣]+', a.lower()))
-    tb = set(re.findall(r'[A-Za-z0-9가-힣]+', b.lower()))
-    jacc = len(ta & tb) / max(1, len(ta | tb))
-    seq = SequenceMatcher(None, a.lower(), b.lower()).ratio()
-    return (jacc + seq) / 2
-
-def compute_step_embeddings(texts, embedding):
-    vecs = []
-    for t in texts:
-        try:
-            vecs.append(embedding.embed_query(t))
-        except Exception:
-            vecs.append([])
-    return vecs
-
-def match_steps_per_title(user_steps: list[str], ref_blocks: list[dict], embedding, sim_threshold: float = 0.62):
-    """
-    사용자 단계(문구) vs 참고코드 단계(주석 문구) 유사도 매칭.
-    순서 무관. 1:1 그리디 매칭.
-    반환: {user_index(1-based): {'ref_num':..., 'score':..., 'ref_title':..., 'code':...}}
-    """
-    user_norms = [normalize_step_title(s) for s in user_steps]
-    ref_norms  = [normalize_step_title(b['title']) for b in ref_blocks]
-
-    # 임베딩 미리 계산
-    u_vecs = compute_step_embeddings(user_norms, embedding)
-    r_vecs = compute_step_embeddings(ref_norms, embedding)
-
-    # 모든 쌍 점수
-    pairs = []
-    for ui, ut in enumerate(user_norms):
-        for ri, rt in enumerate(ref_norms):
-            emb = _cosine(u_vecs[ui], r_vecs[ri]) if (u_vecs[ui] and r_vecs[ri]) else 0.0
-            overl = text_overlap_score(ut, rt)
-            seq_only = SequenceMatcher(None, ut, rt).ratio()
-            score = 0.5*emb + 0.3*overl + 0.2*seq_only
-            pairs.append((score, ui, ri))
-
-    # 점수 높은 순으로 그리디 매칭
-    pairs.sort(reverse=True, key=lambda x: x[0])
-    used_u, used_r = set(), set()
-    mapping = {}
-    for score, ui, ri in pairs:
-        if score < sim_threshold:
-            break
-        if ui in used_u or ri in used_r:
-            continue
-        used_u.add(ui); used_r.add(ri)
-        b = ref_blocks[ri]
-        mapping[ui+1] = {
-            "ref_num": b["num"],
-            "score": round(score, 3),
-            "ref_title": b["title"],
-            "code": b["code"],
-        }
-    return mapping
-
-def build_per_step_reference_context(user_steps: list[str], step_mapping: dict, base_paths: list[str]) -> str:
-    """
-    각 사용자 단계(1-based)에 대해 매칭된 참고코드 블록을 함께 내보낸다.
-    LLM이 step별로 '그대로 가져다 쓰기' 쉽도록 코드블록 포함.
-    """
-    parts = []
-    if base_paths:
-        parts.append("[REF_BASE_PATH_HINT]\n" + ", ".join(base_paths[:8]))
-    for i, step in enumerate(user_steps, start=1):
-        if i in step_mapping:
-            m = step_mapping[i]
-            parts.append(
-                f"[REF_STEP {i}] matched_from={m['ref_num']} score={m['score']}\n"
-                f"TITLE: {m['ref_title']}\n"
-                "CODE:\n```python\n" + m["code"] + "\n```"
-            )
-    return "\n\n".join(parts)
-
-# ========================= (추가) 테스트 자동 실행 + Excel 로깅 =========================
+# ========================= [RUNTIME: EXECUTION & LOGGING] =========================
 def _script_dir() -> str:
+    """현재 스크립트 파일의 디렉토리 반환
+    - __file__이 없는 환경(인터프리터)에서는 CWD 사용
+    """
     try:
         return os.path.dirname(os.path.abspath(__file__))
     except NameError:
         return os.getcwd()
 
+
 def run_generated_test(file_path: str, timeout_sec: int = 900,
                        extra_args: list[str] | None = None,
                        extra_env: dict[str, str] | None = None) -> dict:
     """
-    생성된 unittest 스크립트를 서브프로세스로 실행하고 결과 요약을 반환.
-    extra_args: ["127.0.0.1:38080", "1234", "sqa-vpes"] 같은 CLI 인자
-    extra_env : {"VPES_BASE_URL": "http://127.0.0.1:38080", ...} 같은 환경변수
+    생성된 unittest 스크립트를 별도 프로세스로 실행하고 결과 요약 딕셔너리를 반환.
+    - 목적: 테스트 실행을 메인 프로세스와 분리, 타임아웃/인코딩/환경 격리
+    - 구현:
+      * PYTHONPATH에 스크립트 폴더를 선두 추가(로컬 모듈 import 보장)
+      * stdout/stderr 바이너리를 UTF-8 우선 디코딩, 실패 시 cp949 폴백
+      * 결과 상태 PASS/FAIL/UNKNOWN/TIMEOUT 판정 및 tail 보관
     """
     import copy
     script_dir = os.path.dirname(os.path.abspath(file_path))
@@ -695,11 +846,13 @@ def run_generated_test(file_path: str, timeout_sec: int = 900,
             "stderr_tail": (getattr(e, "stderr", "") or "")[-20000:],
         }
 
+
 def append_result_to_excel(xlsx_path: str, result: dict) -> None:
     """
-    결과를 test_result.xlsx에 누적 기록.
-    - 파일이 없으면 생성 후 헤더 작성.
-    - 있으면 마지막 행 뒤에 append.
+    실행 결과를 test_result.xlsx에 누적 기록
+    - 파일이 없으면 생성 후 헤더 작성
+    - 있으면 마지막 행 뒤에 append
+    - 헤더 컬럼: timestamp, case_id, status, duration_sec, returncode, file, stdout_tail, stderr_tail
     """
     from openpyxl import Workbook, load_workbook
 
@@ -719,8 +872,14 @@ def append_result_to_excel(xlsx_path: str, result: dict) -> None:
     ws.append([result.get(h, "") for h in headers])
     wb.save(xlsx_path)
 
+
 def run_and_log(file_name: str, cli_args: list[str] | None = None,
                 env_vars: dict[str, str] | None = None) -> dict:
+    """
+    테스트 파일을 실행하고 결과를 엑셀에 누적 저장하는 편의 래퍼
+    - 내부적으로 run_generated_test → append_result_to_excel 실행
+    - 콘솔에 요약 메세지 출력
+    """
     base_dir = _script_dir()
     test_file = os.path.join(base_dir, file_name)
     result = run_generated_test(test_file, timeout_sec=900,
@@ -732,8 +891,23 @@ def run_and_log(file_name: str, cli_args: list[str] | None = None,
     print(f"➡️ 결과가 '{xlsx_path}'에 누적 저장되었습니다.")
     return result
 
-# ========================= 메인 로직 =========================
+
+# ========================= [MAIN PIPELINE] =========================
 def main():
+    """
+    전체 파이프라인 오케스트레이션
+    1) 환경변수 로딩 및 LLM/임베딩 초기화
+    2) 사용자 입력 수집(테스트케이스명, 메뉴 섹션, 제목, 단계별 시나리오)
+    3) 단계별 URL 파싱 → base_paths 산출 → 대상 Chroma DB 선택
+    4) (선택) 유사 시나리오 파일의 Step 주석과 사용자 단계 매칭 → per-step reference 구성
+    5) base_path별 RAG(MMR) 검색으로 DOM 후보 집합 수집/정렬/중복제거
+    6) default_setting/move_menu 함수 요약 로드
+    7) LLM 프롬프트 구성(context/function_context/step_reference_context/question)
+    8) LLM 호출 → 코드 생성 → 클래스/메서드명 치환
+    9) 커스텀 검증·보정(validate_generated_code, 힌트 기반 치환, 표준 후처리)
+    10) 코드 파일 저장 및 시나리오-스크립트 적합성 평가(JSON)
+    11) 통과 시 샘플 인자/환경으로 자동 실행 및 로깅
+    """
     # 1) 환경 변수 로딩
     load_dotenv()
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -850,6 +1024,7 @@ def main():
     print("    ↳ 각 단계 끝에 /vpes/... 또는 http(s)://.../vpes/... 를 붙이면 그 URL 스코프로 셀렉터를 고릅니다.")
     print("    ↳ 빈 줄(Enter)을 입력하면 종료됩니다.")
 
+    # 표준 입력을 통해 단계 라인 수집
     steps_raw = []
     while True:
         try:
@@ -863,7 +1038,7 @@ def main():
     if not steps_raw:
         raise ValueError("최소 1개 이상의 단계가 필요합니다. 예: '1. VPES 로그인'")
 
-    # 5-1) 단계에서 URL 추출
+    # 5-1) 단계에서 URL 추출 → clean_steps(문구), step_base_paths(스코프), url_tags(@URL:...) 생성
     clean_steps, step_base_paths, url_tags = parse_step_urls(steps_raw)
 
     # 프롬프트용 질문 문자열(각 단계 뒤에 URL 태그 추가)
@@ -902,6 +1077,7 @@ def main():
     # ✅ 사용자가 원하는 폴더만 입력 (쉼표 구분)
     raw_selected = input("\n👉 실제 사용할 DB 폴더만 골라 붙여넣으세요 (쉼표 구분, 없으면 자동 선택 사용): ").strip()
 
+    # 사용자가 수동으로 고른 경로가 있으면 그것만 사용(상대/절대 혼합 허용, 정상화)
     if raw_selected:
         selected_dirs = [
             os.path.normpath(s.strip().strip('"').strip("'"))
@@ -926,7 +1102,7 @@ def main():
             ref_blocks = extract_step_blocks_from_code(ref_code)
             # 사용자 스텝의 '제목'(숫자 제거한 텍스트) 목록
             user_step_titles = [normalize_step_title(s) for s in clean_steps]
-            # 매칭
+            # 매칭 수행
             mapping = match_steps_per_title(user_step_titles, ref_blocks, embedding, sim_threshold=0.62)
             if mapping:
                 step_reference_context = build_per_step_reference_context(clean_steps, mapping, base_paths)
@@ -945,13 +1121,13 @@ def main():
         selected_dirs=selected_dirs,
     )
 
-    # LangChain Document → 간단 객체로 변환
+    # LangChain Document → 간단 객체로 변환 (metadata/page_content 인터페이스만 사용)
     dom_docs = [
         type("Doc", (object,), {"metadata": d.metadata, "page_content": d.page_content})
         for d in dom_docs_lc
     ]
 
-    # 중복 제거 (url, xpath, id 기준)
+    # 중복 제거 (url, xpath, id 기준) — 동일 요소 중복 노출 방지
     seen, dedup = set(), []
     for d in dom_docs:
         m = getattr(d, "metadata", {}) or {}
@@ -962,45 +1138,21 @@ def main():
         dedup.append(d)
     dom_docs = dedup
 
-    # --- 컬렉션 전체 문서 페이징 로드 ---
-    def _get_all_docs(coll, batch: int = 500):
-        docs, offset = [], 0
-        while True:
-            got = coll.get(include=["documents"], limit=batch, offset=offset)
-            ids = got.get("ids") or []
-            if not ids:
-                break
-            docs.extend(got.get("documents") or [])
-            offset += len(ids)
-        # LangChain Document와 유사한 얇은 객체로 변환
-        return [type("Doc", (object,), {"metadata": {}, "page_content": d}) for d in docs]
-
-    # 8) function_context 로드 (있을 때만)
-    def safe_load_collection(persist_dir: str, collection_name: str):
-        """
-        지정 Chroma 디렉토리에서 컬렉션 전체 문서를 페이징으로 로드.
-        실패하면 빈 리스트 반환.
-        """
-        try:
-            client = chromadb.PersistentClient(path=persist_dir)
-            coll = client.get_collection(name=collection_name)
-            return _get_all_docs(coll, batch=1000)
-        except Exception:
-            return []
-
+    # LangChain Document → function_context 로드(default_setting/move_menu 컬렉션의 문서)
     default_docs = safe_load_collection("./chroma_default_setting", "default_setting")
     move_menu_docs = safe_load_collection("./chroma_move_menu", "move_menu")
 
-    # ===== 핵심: URL 기반으로 DOM 문서를 먼저 필터/정렬 =====
+    # ===== 핵심: URL 기반으로 DOM 문서를 먼저 필터/정렬
     preferred_paths = base_paths[:]  # 이미 base 형태(/vpes/Section)
     dom_docs = filter_and_order_docs_by_urls(dom_docs, preferred_paths)
 
+    # 디버그: 단계별 base_path와 DOM 수 프린트(스코프 매칭 상태 점검)
     print("\n🧭 단계별 URL 매핑(미리보기):")
     for i, bp in enumerate(step_base_paths, start=1):
         docs_n = len(docs_for_base(dom_docs, bp))
         print(f" - STEP {i:02d}: base_path={bp or '-'} dom_count={docs_n}")
 
-    # 9) context 구성
+    # 9) context 구성 — LLM에 전달할 DOM 요약 문자열 생성
     def _fmt(meta, key, maxlen=180):
         v = (meta.get(key) or "")
         sv = str(v)
@@ -1012,7 +1164,7 @@ def main():
     for i, (txt, bp) in enumerate(zip(clean_steps, step_base_paths), start=1):
         step_docs = docs_for_base(dom_docs, bp)
 
-        # 대괄호 힌트가 있는 경우 우선 배치
+        # 대괄호 힌트가 있는 경우, 힌트와 매칭되는 소스파일 그룹을 우선 선택(컨텍스트 품질 향상)
         bracket_hints = re.findall(r'\[([^\]]+)\]', txt)
         if bracket_hints:
             print(f"🎯 STEP {i}에서 대괄호 힌트 발견: {bracket_hints}")
@@ -1022,6 +1174,7 @@ def main():
             best_score = 0
             best_docs = step_docs
 
+            # 후보 source_file 분할 후 키워드 매칭 스코어링(도메인 힌트 강화)
             source_files = set()
             for doc in step_docs:
                 meta = getattr(doc, "metadata", {}) or {}
@@ -1054,6 +1207,7 @@ def main():
 
             filtered_docs = best_docs
 
+            # 1차로 힌트와 일치하는 요소들을 앞쪽에 배치(우선순위 상승)
             prioritized_docs = []
             remaining_docs = []
             for doc in (filtered_docs if filtered_docs else step_docs):
@@ -1076,6 +1230,7 @@ def main():
                     remaining_docs.append(doc)
             step_docs = prioritized_docs + remaining_docs
 
+        # DOM 후보를 한 줄 요약으로 직조하여 LLM context에 삽입
         frag = "\n".join([
             f"FullURL:{urljoin(BASE_URL_CONST, getattr(doc, 'metadata', {}).get('url',''))} "
             f"ID:{_fmt(getattr(doc, 'metadata', {}),'id')} "
@@ -1088,10 +1243,11 @@ def main():
         ])
         sections.append(f"[STEP {i} @URL:{bp or '-'}] {txt}\n{frag}")
 
-    # LLM에 넘길 최종 context
+    # LLM에 넘길 최종 context(문자열)
     context = "\n\n".join(sections)
     function_context = "\n\n".join(doc.page_content[:2000] for doc in (default_docs + move_menu_docs))
 
+    # 참고: 컨텍스트 확장성을 위해 수집된 ID 일부를 로그로 노출(디버깅)
     print("\n📌 context에 포함된 ID 목록(최대 60개 표시):")
     shown = 0
     for doc in dom_docs:
@@ -1117,19 +1273,20 @@ def main():
     )
     generated_code = chain.invoke({})
 
-    # 11) 클래스명/함수명 사용자 입력 값으로 변경
+    # 11) 클래스명/함수명 사용자 입력 값으로 변경(가독/트래킹)
     generated_code = re.sub(r'class [a-zA-Z0-9_]*\(unittest\.TestCase\):', f'class {tc_name}(unittest.TestCase):', generated_code, count=1)
     generated_code = re.sub(r'def test_[a-zA-Z0-9_]*\(', f'def test_{tc_name}(', generated_code, count=1)
 
     # 12) 후처리/검증/가드(간단 버전 유지)
     generated_code = validate_generated_code(generated_code, dom_docs + default_docs, auto_fix=True)
 
-    # 12-1) 대괄호 힌트 기반 보정 (fallback 용)
+    # 12-1) 대괄호 힌트 기반 보정 (fallback 용) — 스텝별 범위 내에서만 치환
     generated_code = convert_bracket_hints_to_exact_selectors_per_step(generated_code, dom_docs, query)
 
+    # 정형 후처리 파이프라인(임포트/tearDown/main/sleep/XPath 보정)
     generated_code = postprocess_generated_code(generated_code)
 
-    # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입 ===
+    # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입(메타정보)
     header_comment = f'# MenuTree : {menu_tree_section}\n# Summary : {tc_title}\n'
     generated_code = header_comment + generated_code
 
@@ -1145,6 +1302,8 @@ def main():
     print(f"\n✅ 코드가 '{file_name}' 파일로 저장되었습니다.")
 
     # 14) 시나리오-스크립트 적합성 검토
+    # - 스크립트 내 Step 주석을 추출하여 시나리오와 비교
+    # - 금지 규칙: Step 주석에 스코프 문자열(@URL:/vpes/..., /vpes/..., http(s)://.../vpes/...) 등장 금지
     code_step_lines = extract_step_comments_from_code(generated_code)
     scenario_text = query
     code_steps_text = "\n".join(code_step_lines) if code_step_lines else "(no step comments found)"
@@ -1220,6 +1379,7 @@ def main():
     else:
         print("검토 결과를 해석할 수 없어 원문을 출력합니다:")
         print(eval_raw.strip())
+
 
 if __name__ == "__main__":
     main()
