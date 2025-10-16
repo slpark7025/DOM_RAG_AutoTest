@@ -39,7 +39,7 @@ from validate_selector_ids import validate_generated_code  # ID 정합성 검증
 
 # ========== [CONFIG] ==========
 CHROMA_BASE_DIR = "./chroma"  # JSON별 DB 폴더들이 위치한 루트
-K_PER_BASE = 200  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
+K_PER_BASE = 400  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
 
 
 # ========================= [UTILS: PATH/JSON/TEXT] =========================
@@ -284,6 +284,42 @@ def strip_document_prefix_xpaths(g: str) -> str:
     text = re.sub(r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])(.+?)\2(\s*\))', _repl_tuple, text, flags=re.DOTALL)
 
     return text
+
+
+def _sanitize_locator_tuples(code: str) -> str:
+    """
+    치환 이후 혹시 남아 있을 수 있는 튜플 외부 꼬리 토큰(특히 ']' 등)을 제거하는 보수적 살균기.
+    - 예: (By.ID, "foo")]  → (By.ID, "foo")
+    - 불필요한 중복 따옴표·괄호 조합도 일부 정리
+    """
+    # ❶ 튜플 바로 뒤에 남은 대괄호 ] 제거
+    code = re.sub(
+        r'(\(By\.(?:ID|XPATH|CSS_SELECTOR|CLASS_NAME)\s*,\s*["\'][\s\S]*?["\']\))\s*\]',
+        r'\1',
+        code
+    )
+    # ❷ 드물게 생기는 중복 따옴표/괄호 패턴 보수 정리
+    code = re.sub(r'"\)\s*"\)', '"))', code)
+    code = re.sub(r"'\)\s*'\)", "'))", code)
+    return code
+
+
+def _ensure_compilable_python(code: str) -> str:
+    """
+    결과 코드의 Python 구문 유효성을 보장. 실패 시 1차 살균을 거쳐 재시도하고,
+    그래도 실패하면 SyntaxError를 재전파하여 상위에서 원인 라인을 확인할 수 있게 함.
+    """
+    import ast
+    try:
+        ast.parse(code)
+        return code
+    except SyntaxError:
+        fixed = _sanitize_locator_tuples(code)
+        try:
+            ast.parse(fixed)
+            return fixed
+        except SyntaxError as e:
+            raise SyntaxError(f"[postprocess] syntax fix failed: {e}") from e
 
 
 def postprocess_generated_code(generated_code: str) -> str:
@@ -665,6 +701,12 @@ def replace_hint_per_step(code: str, step_hints_map: dict[int, dict[str, tuple[s
     parts = re.split(r'(^\s*#\s*\d+\.\s*.*$)', code, flags=re.MULTILINE)
     out, curr_step = [], None
 
+    # 개선된 패턴: 여는 따옴표와 닫는 따옴표를 동일 그룹(백레퍼런스 \2)로 강제, 내용은 DOTALL로 캡처
+    PAT_XPATH_TUPLE = re.compile(
+        r'(\(\s*By\.XPATH\s*,\s*)(["\'])(.*?)\2(\s*\))',
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
     for chunk in parts:
         m = re.match(r'^\s*#\s*(\d+)\.\s*', chunk)
         if m:
@@ -676,7 +718,7 @@ def replace_hint_per_step(code: str, step_hints_map: dict[int, dict[str, tuple[s
             repl_map = step_hints_map[curr_step]
 
             def _sub_xpath(mo: re.Match) -> str:
-                xpath = mo.group(2)
+                xpath = mo.group(3)  # 내용만
                 xlow = xpath.lower()
                 for hint_lower, (typ, val) in repl_map.items():
                     if hint_lower in xlow:
@@ -687,8 +729,7 @@ def replace_hint_per_step(code: str, step_hints_map: dict[int, dict[str, tuple[s
                 return mo.group(0)
 
             # By.XPATH 만 대상으로, 힌트 단어가 포함된 경우에만 치환
-            chunk = re.sub(r'(\(\s*By\.XPATH\s*,\s*["\'])(.+?)(["\']\s*\))',
-                           _sub_xpath, chunk, flags=re.IGNORECASE | re.DOTALL)
+            chunk = PAT_XPATH_TUPLE.sub(_sub_xpath, chunk)
 
         out.append(chunk)
 
@@ -1283,8 +1324,14 @@ def main():
     # 12-1) 대괄호 힌트 기반 보정 (fallback 용) — 스텝별 범위 내에서만 치환
     generated_code = convert_bracket_hints_to_exact_selectors_per_step(generated_code, dom_docs, query)
 
+    # 🔒 [신규] 치환 이후 살균 1차 적용 (남아있는 '] 등 꼬리 제거)
+    generated_code = _sanitize_locator_tuples(generated_code)
+
     # 정형 후처리 파이프라인(임포트/tearDown/main/sleep/XPath 보정)
     generated_code = postprocess_generated_code(generated_code)
+
+    # 🔒 [신규] 최종 AST 컴파일 보증(실패 시 살균 재시도 후 에러 표시)
+    generated_code = _ensure_compilable_python(generated_code)
 
     # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입(메타정보)
     header_comment = f'# MenuTree : {menu_tree_section}\n# Summary : {tc_title}\n'
@@ -1355,7 +1402,7 @@ def main():
         parsed = None
 
     if isinstance(parsed, dict) and parsed.get("compliance") is True:
-        print("생성된 스크립트가 시나리오에 부합합니다.")
+        print("생성된 스크립트가 시나리리오에 부합합니다.")
 
         # ▼ 여기서 원하는 인자를 지정하세요
         sample_cli_args = ["127.0.0.1:38080", "1234", "sqa-vpes"]  # 질문 주신 3개 인자
