@@ -39,7 +39,7 @@ from validate_selector_ids import validate_generated_code  # ID 정합성 검증
 
 # ========== [CONFIG] ==========
 CHROMA_BASE_DIR = "./chroma"  # JSON별 DB 폴더들이 위치한 루트
-K_PER_BASE = 400  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
+K_PER_BASE = 200  # 200~400 사이로 조절해서 사용 - 현재 200, 300개 각각 테스트함
 
 
 # ========================= [UTILS: PATH/JSON/TEXT] =========================
@@ -288,20 +288,95 @@ def strip_document_prefix_xpaths(g: str) -> str:
 
 def _sanitize_locator_tuples(code: str) -> str:
     """
-    치환 이후 혹시 남아 있을 수 있는 튜플 외부 꼬리 토큰(특히 ']' 등)을 제거하는 보수적 살균기.
-    - 예: (By.ID, "foo")]  → (By.ID, "foo")
-    - 불필요한 중복 따옴표·괄호 조합도 일부 정리
+    로케이터 주변의 잘못된 꼬리 토큰을 정리하고 XPath의 '['와 ']' 균형을 맞춘다.
+    - 커버 범위:
+      1) (By.XPATH, "…")          ← EC.presence_of_element_located((By.XPATH, "…"))
+      2) .find_element(By.XPATH, "…")
+      3) .find_elements(By.XPATH, "…")
+      4) 그 외 By.XPATH, "…" 일반 패턴(제네릭 백업)
+    - 동작:
+      - 문자열 내부의 '[' 개수와 ']' 개수를 비교해 부족한 ']'를 **문자열 안에 추가**
+      - 튜플/호출 괄호 **바깥**에 남은 고아 ']'는 제거
+      - 드문 중복 따옴표/괄호 꼬임도 보수 정리
     """
-    # ❶ 튜플 바로 뒤에 남은 대괄호 ] 제거
-    code = re.sub(
-        r'(\(By\.(?:ID|XPATH|CSS_SELECTOR|CLASS_NAME)\s*,\s*["\'][\s\S]*?["\']\))\s*\]',
-        r'\1',
-        code
+    import re
+
+    def _balance(expr: str, trailing: str) -> tuple[str, str]:
+        opens = expr.count("[")
+        closes = expr.count("]")
+        deficit = max(0, opens - closes)
+
+        # 1) 뒤에 붙은 ']'가 있으면 먼저 흡수
+        if deficit > 0 and "]" in trailing:
+            borrow = min(deficit, trailing.count("]"))
+            if borrow:
+                expr += "]" * borrow
+                trailing = trailing.replace("]", "", borrow)
+                deficit -= borrow
+
+        # 2) 여전히 부족하면 문자열 안에 직접 보충
+        if deficit > 0:
+            expr += "]" * deficit
+
+        # 3) 남은 외부 ']'는 제거
+        trailing = re.sub(r"\s*\]+", "", trailing)
+        return expr, trailing
+
+    # ❶ (By.XPATH, "…")
+    def _repl_tuple(m: re.Match) -> str:
+        prefix, quote, expr, suffix, trailing = m.groups()
+        expr, trailing = _balance(expr, trailing or "")
+        return f"{prefix}{quote}{expr}{quote}{suffix}{trailing}"
+
+    pat_tuple = re.compile(
+        r'(\(By\.XPATH\s*,\s*)(["\'])([\s\S]*?)\2(\))(\s*\]+)?',
+        flags=re.IGNORECASE
     )
-    # ❷ 드물게 생기는 중복 따옴표/괄호 패턴 보수 정리
+    code = pat_tuple.sub(_repl_tuple, code)
+
+    # ❷ .find_element(By.XPATH, "…")
+    def _repl_find(m: re.Match) -> str:
+        prefix, quote, expr, suffix, trailing = m.groups()
+        expr, trailing = _balance(expr, trailing or "")
+        return f"{prefix}{quote}{expr}{quote}{suffix}{trailing}"
+
+    pat_find = re.compile(
+        r'(\.find_element\(\s*By\.XPATH\s*,\s*)(["\'])([\s\S]*?)\2(\s*\))(\s*\]+)?',
+        flags=re.IGNORECASE
+    )
+    code = pat_find.sub(_repl_find, code)
+
+    # ❸ .find_elements(By.XPATH, "…")
+    pat_finds = re.compile(
+        r'(\.find_elements\(\s*By\.XPATH\s*,\s*)(["\'])([\s\S]*?)\2(\s*\))(\s*\]+)?',
+        flags=re.IGNORECASE
+    )
+    code = pat_finds.sub(_repl_find, code)
+
+    # ❹ 제네릭 백업: By.XPATH, "…" 형태가 남아있을 경우 균형 보정
+    def _repl_generic(m: re.Match) -> str:
+        prefix, quote, expr = m.groups()
+        expr, _ = _balance(expr, "")
+        return f"{prefix}{quote}{expr}{quote}"
+
+    pat_generic = re.compile(
+        r'(By\.XPATH\s*,\s*)(["\'])([\s\S]*?)\2',
+        flags=re.IGNORECASE
+    )
+    code = pat_generic.sub(_repl_generic, code)
+
+    # ❺ 공통 마무리: 로케이터 튜플 뒤의 고아 ']' 제거 + 중복 따옴표/괄호 보수
+    code = re.sub(
+        r'(\(By\.(?:ID|XPATH|CSS_SELECTOR|CLASS_NAME)\s*,\s*)(["\'])([\s\S]*?)\2(\))\s*\]',
+        r'\1\2\3\2\4',
+        code,
+        flags=re.IGNORECASE
+    )
     code = re.sub(r'"\)\s*"\)', '"))', code)
     code = re.sub(r"'\)\s*'\)", "'))", code)
     return code
+
+
 
 
 def _ensure_compilable_python(code: str) -> str:
@@ -1324,18 +1399,21 @@ def main():
     # 12-1) 대괄호 힌트 기반 보정 (fallback 용) — 스텝별 범위 내에서만 치환
     generated_code = convert_bracket_hints_to_exact_selectors_per_step(generated_code, dom_docs, query)
 
-    # 🔒 [신규] 치환 이후 살균 1차 적용 (남아있는 '] 등 꼬리 제거)
-    generated_code = _sanitize_locator_tuples(generated_code)
+    # 치환 이후 살균 1차 적용 (남아있는 '] 등 꼬리 제거 + XPath 균형 복구)
+    #generated_code = _sanitize_locator_tuples(generated_code)
 
     # 정형 후처리 파이프라인(임포트/tearDown/main/sleep/XPath 보정)
     generated_code = postprocess_generated_code(generated_code)
 
-    # 🔒 [신규] 최종 AST 컴파일 보증(실패 시 살균 재시도 후 에러 표시)
+    # 최종 AST 컴파일 보증(실패 시 살균 재시도 후 에러 표시)
     generated_code = _ensure_compilable_python(generated_code)
 
     # === 추가: 생성 스크립트 최상단에 메뉴트리/요약 주석 삽입(메타정보)
     header_comment = f'# MenuTree : {menu_tree_section}\n# Summary : {tc_title}\n'
     generated_code = header_comment + generated_code
+
+    # 치환 이후 살균 재적용 (남아있는 '] 등 꼬리 제거 + XPath 균형 복구)
+    generated_code = _sanitize_locator_tuples(generated_code)
 
     # 13) 출력 및 저장
     print("\n💻 생성된 Selenium 테스트 코드:")
@@ -1402,7 +1480,7 @@ def main():
         parsed = None
 
     if isinstance(parsed, dict) and parsed.get("compliance") is True:
-        print("생성된 스크립트가 시나리리오에 부합합니다.")
+        print("생성된 스크립트가 시나리오에 부합합니다.")
 
         # ▼ 여기서 원하는 인자를 지정하세요
         sample_cli_args = ["127.0.0.1:38080", "1234", "sqa-vpes"]  # 질문 주신 3개 인자
